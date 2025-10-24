@@ -140,7 +140,7 @@ class _DashboardHomeState extends State<DashboardHome>
         Navigator.pushNamed(context, AppRoutes.browseEqubGroups);
         break;
       case 2:
-        Navigator.pushNamed(context, AppRoutes.paymentProcessing);
+        _showNewPaymentDialog();
         break;
       case 3:
         Navigator.pushNamed(context, AppRoutes.userProfile);
@@ -336,23 +336,33 @@ class _DashboardHomeState extends State<DashboardHome>
       backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
-        elevation: 0,
-
+        elevation: 10,
+        titleSpacing: 3,
         title: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
+            // Circular logo placeholder
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.grey.shade300,
+              ),
+              child: Icon(Icons.account_balance, color: Colors.grey.shade700),
+            ),
+            const SizedBox(width: 10),
+
+            // Title with custom font
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Hello, ${userData["name"]}',
-                    style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.lightTheme.colorScheme.onSurface,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+              child: Text(
+                'Mirchaye Equb',
+                style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+                  fontFamily: 'Roboto', // uses the family you defined
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.lightTheme.colorScheme.onSurface,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -362,7 +372,7 @@ class _DashboardHomeState extends State<DashboardHome>
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Notifications feature coming soon!'),
+                  content: const Text('Notifications feature coming soon!'),
                   backgroundColor: AppTheme.lightTheme.colorScheme.primary,
                 ),
               );
@@ -380,7 +390,7 @@ class _DashboardHomeState extends State<DashboardHome>
               backgroundColor: AppTheme.lightTheme.colorScheme.primary,
               child: Text(
                 userData["name"].toString().substring(0, 1).toUpperCase(),
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
@@ -388,9 +398,10 @@ class _DashboardHomeState extends State<DashboardHome>
               ),
             ),
           ),
-          SizedBox(width: 2.w),
+          const SizedBox(width: 10),
         ],
       ),
+
       body: RefreshIndicator(
         onRefresh: _handleRefresh,
         color: AppTheme.lightTheme.colorScheme.primary,

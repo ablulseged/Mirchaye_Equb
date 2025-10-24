@@ -37,9 +37,11 @@ class UserStatusCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.lightTheme.shadowColor,
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: AppTheme.lightTheme.shadowColor.withOpacity(
+                0.5,
+              ), // lighter shadow
+              blurRadius: 4, // smaller blur
+              offset: const Offset(0, 2), // optional: move shadow closer
             ),
           ],
         ),

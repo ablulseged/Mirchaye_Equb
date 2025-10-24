@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
-import './widgets/achievement_badge.dart';
+// import './widgets/achievement_badge.dart';
 import 'widgets/balance_display_card.dart';
 import './widgets/profile_completion_bar.dart';
 import './widgets/profile_section_card.dart';
@@ -382,7 +382,7 @@ class _UserProfileState extends State<UserProfile> {
             ),
 
             // Balance Display
-            BalanceDisplayCard(balance: userProfile["balance"]),
+            // BalanceDisplayCard(balance: userProfile["balance"]),
 
             // Personal Information Section
             ProfileSectionCard(
@@ -479,28 +479,6 @@ class _UserProfileState extends State<UserProfile> {
             ),
 
             // Achievement Badges Section
-            ProfileSectionCard(
-              title: 'Achievement Badges',
-              children: [
-                Container(
-                  height: 12.h,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: achievements.length,
-                    itemBuilder: (context, index) {
-                      final achievement = achievements[index];
-                      return AchievementBadge(
-                        title: achievement["title"],
-                        description: achievement["description"],
-                        iconName: achievement["iconName"],
-                        color: achievement["color"],
-                        isEarned: achievement["earned"],
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
 
             // Settings Section
             ProfileSectionCard(

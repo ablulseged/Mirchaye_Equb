@@ -41,12 +41,7 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
     '12+ months',
   ];
 
-  final List<String> locations = [
-    'All',
-    'Wachemo University',
-    'Addis Ababa University',
-    'Jimma University',
-  ];
+  final List<String> locations = ['All', 'IS', 'Software Engineering', 'IT'];
 
   final List<String> groupSizes = [
     'All',
@@ -105,7 +100,7 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
       "adminName": "Hanan Mohammed",
       "adminAvatar":
           "https://images.unsplash.com/photo-1496725288175-64caa3b2e9f6",
-      "university": "Addis Ababa University",
+      "university": "WCU University",
       "trustRating": 4.9,
       "category": "professional",
       "description":
@@ -124,7 +119,7 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
       "adminName": "Dr. Kebede Assefa",
       "adminAvatar":
           "https://images.unsplash.com/photo-1727782383174-c498f69acc5c",
-      "university": "Jimma University",
+      "university": "WCU University",
       "trustRating": 4.7,
       "category": "community",
       "description":
@@ -314,7 +309,7 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
                                 setModalState(() => _selectedDuration = value),
                           ),
                           _buildFilterSection(
-                            'Location',
+                            'Department',
                             locations,
                             _selectedLocation,
                             (value) =>
@@ -665,7 +660,7 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
                       SizedBox(width: 2.w),
                       FilterChipWidget(
                         label: _selectedLocation == 'All'
-                            ? 'Location'
+                            ? 'Department'
                             : _selectedLocation.split(' ').first,
                         isSelected: _selectedLocation != 'All',
                         onTap: _showAdvancedFilters,

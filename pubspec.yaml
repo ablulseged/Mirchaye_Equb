@@ -37,3 +37,9 @@ flutter:
   assets:
     - assets/
     - assets/images/
+fonts:
+  - family: Roboto
+    fonts:
+      - asset: assets/font/BodoniModa-Italic-VariableFont_opsz,wght.ttf
+        weight: 700
+      
