@@ -33,14 +33,14 @@ class AmountDisplayCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppTheme.lightTheme.colorScheme.primary,
-            AppTheme.lightTheme.colorScheme.primary.withValues(alpha: 0.8),
+            Theme.of(context).colorScheme.primary,
+            Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
           ],
         ),
         borderRadius: BorderRadius.circular(16.0),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.lightTheme.colorScheme.primary.withValues(
+            color: Theme.of(context).colorScheme.primary.withValues(
               alpha: 0.3,
             ),
             blurRadius: 12,
@@ -54,7 +54,7 @@ class AmountDisplayCard extends StatelessWidget {
           if (groupName != null) ...[
             Text(
               groupName!,
-              style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: Colors.white,
                 fontWeight: FontWeight.w500,
               ),
@@ -66,7 +66,7 @@ class AmountDisplayCard extends StatelessWidget {
           if (cycleInfo != null) ...[
             Text(
               cycleInfo!,
-              style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Colors.white.withValues(alpha: 0.9),
               ),
               textAlign: TextAlign.center,
@@ -76,7 +76,7 @@ class AmountDisplayCard extends StatelessWidget {
 
           Text(
             'Payment Amount',
-            style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.9),
             ),
           ),
@@ -89,7 +89,7 @@ class AmountDisplayCard extends StatelessWidget {
             children: [
               Text(
                 amount,
-                style: AppTheme.lightTheme.textTheme.displayMedium?.copyWith(
+                style: Theme.of(context).textTheme.displayMedium?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
                   fontSize: 36,
@@ -98,7 +98,7 @@ class AmountDisplayCard extends StatelessWidget {
               SizedBox(width: 2.w),
               Text(
                 currency,
-                style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: Colors.white.withValues(alpha: 0.9),
                   fontWeight: FontWeight.w500,
                 ),
@@ -116,7 +116,7 @@ class AmountDisplayCard extends StatelessWidget {
               ),
               child: Text(
                 '≈ $convertedAmount $convertedCurrency',
-                style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Colors.white.withValues(alpha: 0.9),
                   fontWeight: FontWeight.w500,
                 ),

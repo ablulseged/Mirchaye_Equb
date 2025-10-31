@@ -19,6 +19,8 @@ class QuickActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return GestureDetector(
       onTap: isEnabled ? onTap : null,
       child: Container(
@@ -26,17 +28,13 @@ class QuickActionButton extends StatelessWidget {
         margin: EdgeInsets.symmetric(horizontal: 1.w),
         decoration: BoxDecoration(
           color: isEnabled
-              ? AppTheme.lightTheme.colorScheme.primary
-              : AppTheme.lightTheme.colorScheme.outline.withAlpha(
-                  77,
-                ), // 0.3 opacity
+              ? theme.colorScheme.primary
+              : theme.colorScheme.outline.withAlpha(77),
           borderRadius: BorderRadius.circular(12),
           boxShadow: isEnabled
               ? [
                   BoxShadow(
-                    color: AppTheme.lightTheme.colorScheme.primary.withAlpha(
-                      77,
-                    ),
+                    color: theme.colorScheme.primary.withAlpha(77),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
@@ -50,16 +48,16 @@ class QuickActionButton extends StatelessWidget {
               iconName: iconName,
               color: isEnabled
                   ? Colors.white
-                  : AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                  : theme.colorScheme.onSurfaceVariant,
               size: 24,
             ),
             SizedBox(height: 1.h),
             Text(
               title,
-              style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
+              style: theme.textTheme.bodySmall?.copyWith(
                 color: isEnabled
                     ? Colors.white
-                    : AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                    : theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
               ),
               textAlign: TextAlign.center,

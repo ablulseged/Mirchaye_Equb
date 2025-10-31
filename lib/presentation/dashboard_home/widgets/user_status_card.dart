@@ -26,6 +26,8 @@ class UserStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -33,15 +35,13 @@ class UserStatusCard extends StatelessWidget {
         margin: EdgeInsets.symmetric(horizontal: 2.w, vertical: 1.h),
         padding: EdgeInsets.all(4.w),
         decoration: BoxDecoration(
-          color: AppTheme.lightTheme.cardColor,
+          color: theme.cardColor,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.lightTheme.shadowColor.withOpacity(
-                0.5,
-              ), // lighter shadow
-              blurRadius: 4, // smaller blur
-              offset: const Offset(0, 2), // optional: move shadow closer
+              color: theme.shadowColor.withOpacity(0.5),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
@@ -57,23 +57,18 @@ class UserStatusCard extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: AppTheme.lightTheme.textTheme.titleMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.lightTheme.colorScheme.onSurface,
-                            ),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                       SizedBox(height: 0.5.h),
                       Text(
                         subtitle,
-                        style: AppTheme.lightTheme.textTheme.bodySmall
-                            ?.copyWith(
-                              color: AppTheme
-                                  .lightTheme
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
@@ -81,9 +76,9 @@ class UserStatusCard extends StatelessWidget {
                 ),
                 Text(
                   amount,
-                  style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+                  style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: AppTheme.lightTheme.colorScheme.primary,
+                    color: theme.colorScheme.primary,
                   ),
                 ),
               ],
@@ -97,13 +92,13 @@ class UserStatusCard extends StatelessWidget {
                   children: [
                     Text(
                       'Progress',
-                      style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
-                        color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                     Text(
                       '${(progress * 100).toInt()}%',
-                      style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
+                      style: theme.textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: progressColor,
                       ),
@@ -113,8 +108,7 @@ class UserStatusCard extends StatelessWidget {
                 SizedBox(height: 1.h),
                 LinearProgressIndicator(
                   value: progress,
-                  backgroundColor: AppTheme.lightTheme.colorScheme.outline
-                      .withValues(alpha: 0.2),
+                  backgroundColor: theme.colorScheme.outline.withValues(alpha: 0.2),
                   valueColor: AlwaysStoppedAnimation<Color>(progressColor),
                   minHeight: 6,
                 ),

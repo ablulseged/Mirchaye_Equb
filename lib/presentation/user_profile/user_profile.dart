@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
-
+import 'package:provider/provider.dart';
 import '../../core/app_export.dart';
-// import './widgets/achievement_badge.dart';
-import 'widgets/balance_display_card.dart';
 import './widgets/profile_completion_bar.dart';
 import './widgets/profile_section_card.dart';
+import '../../appearance_section_widget.dart';
+import '../../locale_provider.dart';
+import '../../l10n/app_localizations.dart';
+import '../login_screen/login_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../services/auth_service.dart';
 
 class UserProfile extends StatefulWidget {
   const UserProfile({Key? key}) : super(key: key);
@@ -19,7 +23,7 @@ class _UserProfileState extends State<UserProfile> {
   bool _biometricEnabled = true;
   bool _notificationsEnabled = true;
   bool _paymentReminders = true;
-
+  bool showAppearance = false;
   // Mock user profile data
   final Map<String, dynamic> userProfile = {
     "id": 1,
@@ -73,6 +77,7 @@ class _UserProfileState extends State<UserProfile> {
   }
 
   void _showImagePicker() {
+    final l10n = AppLocalizations.of(context);
     showModalBottomSheet(
       context: context,
       shape: RoundedRectangleBorder(
@@ -85,10 +90,10 @@ class _UserProfileState extends State<UserProfile> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Change Profile Photo',
-                style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+                l10n?.edit ?? 'Change Profile Photo',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
               SizedBox(height: 3.h),
               Row(
@@ -96,21 +101,29 @@ class _UserProfileState extends State<UserProfile> {
                 children: [
                   _buildImageOption(
                     icon: 'photo_camera',
-                    title: 'Camera',
+                    title: l10n?.edit ?? 'Camera',
                     onTap: () {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Camera feature coming soon!')),
+                        SnackBar(
+                          content: Text(
+                            l10n?.edit ?? 'Camera feature coming soon!',
+                          ),
+                        ),
                       );
                     },
                   ),
                   _buildImageOption(
                     icon: 'photo_library',
-                    title: 'Gallery',
+                    title: l10n?.edit ?? 'Gallery',
                     onTap: () {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Gallery feature coming soon!')),
+                        SnackBar(
+                          content: Text(
+                            l10n?.edit ?? 'Gallery feature coming soon!',
+                          ),
+                        ),
                       );
                     },
                   ),
@@ -136,17 +149,17 @@ class _UserProfileState extends State<UserProfile> {
           Container(
             padding: EdgeInsets.all(4.w),
             decoration: BoxDecoration(
-              color: AppTheme.lightTheme.colorScheme.primaryContainer,
+              color: Theme.of(context).colorScheme.primaryContainer,
               borderRadius: BorderRadius.circular(12),
             ),
             child: CustomIconWidget(
               iconName: icon,
-              color: AppTheme.lightTheme.colorScheme.primary,
+              color: Theme.of(context).colorScheme.primary,
               size: 32,
             ),
           ),
           SizedBox(height: 1.h),
-          Text(title, style: AppTheme.lightTheme.textTheme.bodyMedium),
+          Text(title, style: Theme.of(context).textTheme.bodyMedium),
         ],
       ),
     );
@@ -159,11 +172,11 @@ class _UserProfileState extends State<UserProfile> {
         return AlertDialog(
           title: Text(
             'PIN Management',
-            style: AppTheme.lightTheme.textTheme.titleLarge,
+            style: Theme.of(context).textTheme.titleLarge,
           ),
           content: Text(
             'Choose an option to manage your security PIN.',
-            style: AppTheme.lightTheme.textTheme.bodyMedium,
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
           actions: [
             TextButton(
@@ -185,72 +198,110 @@ class _UserProfileState extends State<UserProfile> {
   }
 
   void _showLanguageDialog() {
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
+    final currentLocale = localeProvider.locale.languageCode;
+
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            'Select Language',
-            style: AppTheme.lightTheme.textTheme.titleLarge,
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: Text('English'),
-                leading: Radio(value: 'en', groupValue: 'en', onChanged: null),
-                onTap: () => Navigator.pop(context),
+      builder: (BuildContext dialogContext) {
+        String selectedLocale = currentLocale;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text(
+                AppLocalizations.of(context)?.selectLanguage ??
+                    'Select Language',
+                style: Theme.of(context).textTheme.titleLarge,
               ),
-              ListTile(
-                title: Text('አማርኛ (Amharic)'),
-                leading: Radio(value: 'am', groupValue: 'en', onChanged: null),
-                onTap: () => Navigator.pop(context),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  RadioListTile<String>(
+                    title: const Text('English'),
+                    value: 'en',
+                    groupValue: selectedLocale,
+                    onChanged: (value) {
+                      setState(() => selectedLocale = value!);
+                    },
+                  ),
+                  RadioListTile<String>(
+                    title: const Text('አማርኛ (Amharic)'),
+                    value: 'am',
+                    groupValue: selectedLocale,
+                    onChanged: (value) {
+                      setState(() => selectedLocale = value!);
+                    },
+                  ),
+                ],
               ),
-            ],
-          ),
-          actions: [
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Close'),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: Text(AppLocalizations.of(context)?.cancel ?? 'Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    localeProvider.setLocale(Locale(selectedLocale));
+                    Navigator.pop(dialogContext);
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          selectedLocale == 'en'
+                              ? 'Language changed to English'
+                              : 'ቋንቋ ወደ አማርኛ ተቀይሯል',
+                        ),
+                      ),
+                    );
+                  },
+                  child: Text(AppLocalizations.of(context)?.save ?? 'Save'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
 
-  void _showLogoutDialog() {
+  void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (dialogContext) {
         return AlertDialog(
-          title: Text(
-            'Logout',
-            style: AppTheme.lightTheme.textTheme.titleLarge,
-          ),
-          content: Text(
-            'Are you sure you want to logout?',
-            style: AppTheme.lightTheme.textTheme.bodyMedium,
-          ),
+          title: const Text('Logout'),
+          content: const Text('Are you sure you want to logout?'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancel'),
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
+              onPressed: () async {
+                await AuthService().signOut();
+                Navigator.pop(dialogContext);
+
+                // Redirect to login and clear navigation stack
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  AppRoutes.loginScreen,
+                  (route) => false,
+                );
+
+                // Show confirmation
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Logout successful'),
-                    backgroundColor: AppTheme.getSuccessColor(true),
+                    content: const Text('Logout successful'),
+                    backgroundColor: AppTheme.getSuccessColorFromContext(
+                      context,
+                    ),
                   ),
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.getErrorColor(true),
+                backgroundColor: AppTheme.getErrorColorFromContext(context),
               ),
-              child: Text('Logout', style: TextStyle(color: Colors.white)),
+              child: const Text('Logout'),
             ),
           ],
         );
@@ -260,14 +311,17 @@ class _UserProfileState extends State<UserProfile> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+
     return Scaffold(
-      backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
+        backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         title: Text(
-          'Profile',
-          style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+          l10n?.profile ?? 'Profile',
+          style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -277,7 +331,7 @@ class _UserProfileState extends State<UserProfile> {
             onPressed: _toggleEditMode,
             icon: CustomIconWidget(
               iconName: _isEditMode ? 'check' : 'edit',
-              color: AppTheme.lightTheme.colorScheme.primary,
+              color: theme.colorScheme.primary,
               size: 24,
             ),
           ),
@@ -309,7 +363,7 @@ class _UserProfileState extends State<UserProfile> {
                             child: Container(
                               padding: EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: AppTheme.lightTheme.colorScheme.primary,
+                                color: theme.colorScheme.primary,
                                 shape: BoxShape.circle,
                               ),
                               child: CustomIconWidget(
@@ -326,7 +380,9 @@ class _UserProfileState extends State<UserProfile> {
                             child: Container(
                               padding: EdgeInsets.all(4),
                               decoration: BoxDecoration(
-                                color: AppTheme.getSuccessColor(true),
+                                color: AppTheme.getSuccessColorFromContext(
+                                  context,
+                                ),
                                 shape: BoxShape.circle,
                               ),
                               child: CustomIconWidget(
@@ -342,14 +398,15 @@ class _UserProfileState extends State<UserProfile> {
                   SizedBox(height: 2.h),
                   Text(
                     userProfile["name"],
-                    style: AppTheme.lightTheme.textTheme.headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.w600),
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   SizedBox(height: 0.5.h),
                   Text(
                     userProfile["university"],
-                    style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                   if (userProfile["isVerified"])
@@ -358,17 +415,16 @@ class _UserProfileState extends State<UserProfile> {
                       children: [
                         CustomIconWidget(
                           iconName: 'school',
-                          color: AppTheme.getSuccessColor(true),
+                          color: AppTheme.getSuccessColorFromContext(context),
                           size: 16,
                         ),
                         SizedBox(width: 1.w),
                         Text(
-                          'University Verified',
-                          style: AppTheme.lightTheme.textTheme.bodySmall
-                              ?.copyWith(
-                                color: AppTheme.getSuccessColor(true),
-                                fontWeight: FontWeight.w500,
-                              ),
+                          l10n?.universityVerified ?? 'University Verified',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppTheme.getSuccessColorFromContext(context),
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
@@ -386,7 +442,7 @@ class _UserProfileState extends State<UserProfile> {
 
             // Personal Information Section
             ProfileSectionCard(
-              title: 'Personal Information',
+              title: l10n?.personalInformation ?? 'Personal Information',
               children: [
                 _buildInfoRow(
                   'Full Name',
@@ -411,7 +467,7 @@ class _UserProfileState extends State<UserProfile> {
 
             // University Details Section
             ProfileSectionCard(
-              title: 'University Details',
+              title: l10n?.universityDetails ?? 'University Details',
               children: [
                 _buildInfoRow(
                   'Institution',
@@ -431,15 +487,15 @@ class _UserProfileState extends State<UserProfile> {
                   'verified',
                   isEditable: false,
                   valueColor: userProfile["isVerified"]
-                      ? AppTheme.getSuccessColor(true)
-                      : AppTheme.getWarningColor(true),
+                      ? AppTheme.getSuccessColorFromContext(context)
+                      : AppTheme.getWarningColorFromContext(context),
                 ),
               ],
             ),
 
             // Equb Preferences Section
             ProfileSectionCard(
-              title: 'Equb Preferences',
+              title: l10n?.equbPreferences ?? 'Equb Preferences',
               children: [
                 _buildSwitchRow(
                   'Notifications',
@@ -460,7 +516,7 @@ class _UserProfileState extends State<UserProfile> {
 
             // Security Section
             ProfileSectionCard(
-              title: 'Security',
+              title: l10n?.security ?? 'Security',
               children: [
                 _buildActionRow(
                   'PIN Management',
@@ -482,11 +538,13 @@ class _UserProfileState extends State<UserProfile> {
 
             // Settings Section
             ProfileSectionCard(
-              title: 'Settings',
+              title: l10n?.settings ?? 'Settings',
               children: [
                 _buildActionRow(
-                  'Language',
-                  'አማርኛ / English',
+                  l10n?.language ?? 'Language',
+                  context.watch<LocaleProvider>().locale.languageCode == 'am'
+                      ? 'አማርኛ'
+                      : 'English',
                   'language',
                   _showLanguageDialog,
                 ),
@@ -496,7 +554,9 @@ class _UserProfileState extends State<UserProfile> {
                   'privacy_tip',
                   () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Privacy Policy coming soon!')),
+                      const SnackBar(
+                        content: Text('Privacy Policy coming soon!'),
+                      ),
                     );
                   },
                 ),
@@ -506,9 +566,50 @@ class _UserProfileState extends State<UserProfile> {
                   'help',
                   () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Support feature coming soon!')),
+                      const SnackBar(
+                        content: Text('Support feature coming soon!'),
+                      ),
                     );
                   },
+                ),
+
+                // Appearance section (button + toggle)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            showAppearance = !showAppearance;
+                          });
+                        },
+                        icon: const Icon(Icons.palette_outlined),
+                        label: Text(
+                          showAppearance
+                              ? 'Hide Appearance'
+                              : 'Show Appearance',
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 16,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      if (showAppearance)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: AppearanceSectionWidget(), // <- NOT const
+                        ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -518,15 +619,15 @@ class _UserProfileState extends State<UserProfile> {
               margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: _showLogoutDialog,
+                onPressed: () => _showLogoutDialog(context), // ✅ Pass context
                 icon: CustomIconWidget(
                   iconName: 'logout',
                   color: Colors.white,
                   size: 20,
                 ),
-                label: Text('Logout'),
+                label: Text(l10n?.logout ?? 'Logout'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.getErrorColor(true),
+                  backgroundColor: AppTheme.getErrorColorFromContext(context),
                   padding: EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -549,13 +650,15 @@ class _UserProfileState extends State<UserProfile> {
     bool isEditable = false,
     Color? valueColor,
   }) {
+    final theme = Theme.of(context);
+
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 1.h),
       child: Row(
         children: [
           CustomIconWidget(
             iconName: iconName,
-            color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+            color: theme.colorScheme.onSurfaceVariant,
             size: 20,
           ),
           SizedBox(width: 3.w),
@@ -565,8 +668,8 @@ class _UserProfileState extends State<UserProfile> {
               children: [
                 Text(
                   title,
-                  style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
-                    color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
                 SizedBox(height: 0.5.h),
@@ -583,13 +686,10 @@ class _UserProfileState extends State<UserProfile> {
                       )
                     : Text(
                         value,
-                        style: AppTheme.lightTheme.textTheme.bodyMedium
-                            ?.copyWith(
-                              color:
-                                  valueColor ??
-                                  AppTheme.lightTheme.colorScheme.onSurface,
-                              fontWeight: FontWeight.w500,
-                            ),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: valueColor ?? theme.colorScheme.onSurface,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
               ],
             ),
@@ -597,7 +697,7 @@ class _UserProfileState extends State<UserProfile> {
           if (isEditable && !_isEditMode)
             CustomIconWidget(
               iconName: 'chevron_right',
-              color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+              color: theme.colorScheme.onSurfaceVariant,
               size: 16,
             ),
         ],
@@ -612,13 +712,15 @@ class _UserProfileState extends State<UserProfile> {
     bool value,
     ValueChanged<bool> onChanged,
   ) {
+    final theme = Theme.of(context);
+
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 1.h),
       child: Row(
         children: [
           CustomIconWidget(
             iconName: iconName,
-            color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+            color: theme.colorScheme.onSurfaceVariant,
             size: 20,
           ),
           SizedBox(width: 3.w),
@@ -628,14 +730,14 @@ class _UserProfileState extends State<UserProfile> {
               children: [
                 Text(
                   title,
-                  style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 Text(
                   description,
-                  style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
-                    color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -653,6 +755,8 @@ class _UserProfileState extends State<UserProfile> {
     String iconName,
     VoidCallback onTap,
   ) {
+    final theme = Theme.of(context);
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -662,7 +766,7 @@ class _UserProfileState extends State<UserProfile> {
           children: [
             CustomIconWidget(
               iconName: iconName,
-              color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+              color: theme.colorScheme.onSurfaceVariant,
               size: 20,
             ),
             SizedBox(width: 3.w),
@@ -672,14 +776,14 @@ class _UserProfileState extends State<UserProfile> {
                 children: [
                   Text(
                     title,
-                    style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
+                    style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   Text(
                     description,
-                    style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
-                      color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -687,7 +791,7 @@ class _UserProfileState extends State<UserProfile> {
             ),
             CustomIconWidget(
               iconName: 'chevron_right',
-              color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+              color: theme.colorScheme.onSurfaceVariant,
               size: 16,
             ),
           ],

@@ -11,6 +11,8 @@ class EmptyStateWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(6.w),
@@ -29,17 +31,17 @@ class EmptyStateWidget extends StatelessWidget {
           SizedBox(height: 4.h),
           Text(
             'Welcome to Equb Manager',
-            style: AppTheme.lightTheme.textTheme.headlineSmall?.copyWith(
+            style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w700,
-              color: AppTheme.lightTheme.colorScheme.onSurface,
+              color: theme.colorScheme.onSurface,
             ),
             textAlign: TextAlign.center,
           ),
           SizedBox(height: 2.h),
           Text(
             'Join the traditional Ethiopian savings culture with modern convenience. Create or join Equb groups with your university community.',
-            style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-              color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
             textAlign: TextAlign.center,
           ),
@@ -65,7 +67,7 @@ class EmptyStateWidget extends StatelessWidget {
                   SizedBox(width: 2.w),
                   Text(
                     'Start Your First Equb',
-                    style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
+                    style: theme.textTheme.bodyMedium?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
                     ),

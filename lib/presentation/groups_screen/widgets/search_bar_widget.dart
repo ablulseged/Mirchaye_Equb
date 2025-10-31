@@ -64,6 +64,8 @@ class _SearchBarWidgetState extends State<SearchBarWidget>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
       child: Row(
@@ -73,10 +75,10 @@ class _SearchBarWidgetState extends State<SearchBarWidget>
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
                 decoration: BoxDecoration(
-                  color: AppTheme.lightTheme.colorScheme.surface,
+                  color: theme.colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: AppTheme.lightTheme.colorScheme.outline.withValues(
+                    color: theme.colorScheme.outline.withValues(
                       alpha: 0.3,
                     ),
                   ),
@@ -85,16 +87,16 @@ class _SearchBarWidgetState extends State<SearchBarWidget>
                   children: [
                     CustomIconWidget(
                       iconName: 'groups',
-                      color: AppTheme.lightTheme.colorScheme.primary,
+                      color: theme.colorScheme.primary,
                       size: 24,
                     ),
                     SizedBox(width: 3.w),
                     Text(
                       'Equb Groups Manager',
-                      style: AppTheme.lightTheme.textTheme.titleMedium
+                      style: theme.textTheme.titleMedium
                           ?.copyWith(
                             fontWeight: FontWeight.w600,
-                            color: AppTheme.lightTheme.colorScheme.onSurface,
+                            color: theme.colorScheme.onSurface,
                           ),
                     ),
                   ],
@@ -104,10 +106,10 @@ class _SearchBarWidgetState extends State<SearchBarWidget>
             SizedBox(width: 2.w),
             Container(
               decoration: BoxDecoration(
-                color: AppTheme.lightTheme.colorScheme.surface,
+                color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppTheme.lightTheme.colorScheme.outline.withValues(
+                  color: theme.colorScheme.outline.withValues(
                     alpha: 0.3,
                   ),
                 ),
@@ -116,7 +118,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget>
                 onPressed: widget.onToggle,
                 icon: CustomIconWidget(
                   iconName: 'search',
-                  color: AppTheme.lightTheme.colorScheme.onSurface,
+                  color: theme.colorScheme.onSurface,
                   size: 24,
                 ),
               ),
@@ -124,10 +126,10 @@ class _SearchBarWidgetState extends State<SearchBarWidget>
             SizedBox(width: 2.w),
             Container(
               decoration: BoxDecoration(
-                color: AppTheme.lightTheme.colorScheme.surface,
+                color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppTheme.lightTheme.colorScheme.outline.withValues(
+                  color: theme.colorScheme.outline.withValues(
                     alpha: 0.3,
                   ),
                 ),
@@ -138,7 +140,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget>
                     onPressed: () {},
                     icon: CustomIconWidget(
                       iconName: 'notifications',
-                      color: AppTheme.lightTheme.colorScheme.onSurface,
+                      color: theme.colorScheme.onSurface,
                       size: 24,
                     ),
                   ),
@@ -149,7 +151,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget>
                       width: 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: AppTheme.lightTheme.colorScheme.error,
+                        color: theme.colorScheme.error,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -165,10 +167,10 @@ class _SearchBarWidgetState extends State<SearchBarWidget>
                   return Container(
                     height: 6.h,
                     decoration: BoxDecoration(
-                      color: AppTheme.lightTheme.colorScheme.surface,
+                      color: theme.colorScheme.surface,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: AppTheme.lightTheme.colorScheme.primary
+                        color: theme.colorScheme.primary
                             .withValues(alpha: 0.5),
                       ),
                     ),
@@ -177,16 +179,16 @@ class _SearchBarWidgetState extends State<SearchBarWidget>
                       autofocus: true,
                       decoration: InputDecoration(
                         hintText: 'Search groups...',
-                        hintStyle: AppTheme.lightTheme.textTheme.bodyMedium
+                        hintStyle: theme.textTheme.bodyMedium
                             ?.copyWith(
-                              color: AppTheme.lightTheme.colorScheme.onSurface
+                              color: theme.colorScheme.onSurface
                                   .withValues(alpha: 0.5),
                             ),
                         prefixIcon: Padding(
                           padding: EdgeInsets.all(3.w),
                           child: CustomIconWidget(
                             iconName: 'search',
-                            color: AppTheme.lightTheme.colorScheme.primary,
+                            color: theme.colorScheme.primary,
                             size: 20,
                           ),
                         ),
@@ -196,8 +198,8 @@ class _SearchBarWidgetState extends State<SearchBarWidget>
                           vertical: 1.5.h,
                         ),
                       ),
-                      style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.lightTheme.colorScheme.onSurface,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
                   );
@@ -207,10 +209,10 @@ class _SearchBarWidgetState extends State<SearchBarWidget>
             SizedBox(width: 2.w),
             Container(
               decoration: BoxDecoration(
-                color: AppTheme.lightTheme.colorScheme.surface,
+                color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppTheme.lightTheme.colorScheme.outline.withValues(
+                  color: theme.colorScheme.outline.withValues(
                     alpha: 0.3,
                   ),
                 ),
@@ -219,7 +221,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget>
                 onPressed: widget.onToggle,
                 icon: CustomIconWidget(
                   iconName: 'close',
-                  color: AppTheme.lightTheme.colorScheme.onSurface,
+                  color: theme.colorScheme.onSurface,
                   size: 24,
                 ),
               ),

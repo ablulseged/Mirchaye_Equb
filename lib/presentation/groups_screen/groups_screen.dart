@@ -134,8 +134,10 @@ class _GroupsScreenState extends State<GroupsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
-      backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -158,10 +160,10 @@ class _GroupsScreenState extends State<GroupsScreen>
             Container(
               margin: EdgeInsets.symmetric(horizontal: 4.w),
               decoration: BoxDecoration(
-                color: AppTheme.lightTheme.colorScheme.surface,
+                color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppTheme.lightTheme.colorScheme.outline.withValues(
+                  color: theme.colorScheme.outline.withValues(
                     alpha: 0.3,
                   ),
                 ),
@@ -170,16 +172,16 @@ class _GroupsScreenState extends State<GroupsScreen>
                 controller: _tabController,
                 indicatorSize: TabBarIndicatorSize.tab,
                 indicator: BoxDecoration(
-                  color: AppTheme.lightTheme.colorScheme.primary,
+                  color: theme.colorScheme.primary,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                labelColor: AppTheme.lightTheme.colorScheme.onPrimary,
-                unselectedLabelColor: AppTheme.lightTheme.colorScheme.onSurface
+                labelColor: theme.colorScheme.onPrimary,
+                unselectedLabelColor: theme.colorScheme.onSurface
                     .withValues(alpha: 0.7),
-                labelStyle: AppTheme.lightTheme.textTheme.labelMedium?.copyWith(
+                labelStyle: theme.textTheme.labelMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
-                unselectedLabelStyle: AppTheme.lightTheme.textTheme.labelMedium
+                unselectedLabelStyle: theme.textTheme.labelMedium
                     ?.copyWith(fontWeight: FontWeight.w400),
                 tabs: [
                   Tab(text: 'My Equb (${_myEqubs.length}/$MAX_MY_EQUBS)'),
@@ -207,34 +209,34 @@ class _GroupsScreenState extends State<GroupsScreen>
       floatingActionButton: _canCreateNewGroup
           ? FloatingActionButton.extended(
               onPressed: _showGroupCreationModal,
-              backgroundColor: AppTheme.lightTheme.colorScheme.primary,
-              foregroundColor: AppTheme.lightTheme.colorScheme.onPrimary,
+              backgroundColor: theme.colorScheme.primary,
+              foregroundColor: theme.colorScheme.onPrimary,
               icon: CustomIconWidget(
                 iconName: 'add',
-                color: AppTheme.lightTheme.colorScheme.onPrimary,
+                color: theme.colorScheme.onPrimary,
                 size: 24,
               ),
               label: Text(
                 'Create Equb',
-                style: AppTheme.lightTheme.textTheme.labelLarge?.copyWith(
-                  color: AppTheme.lightTheme.colorScheme.onPrimary,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.onPrimary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             )
           : FloatingActionButton.extended(
               onPressed: () => _showLimitReachedDialog('create'),
-              backgroundColor: AppTheme.lightTheme.colorScheme.outline,
-              foregroundColor: AppTheme.lightTheme.colorScheme.onSurface,
+              backgroundColor: theme.colorScheme.outline,
+              foregroundColor: theme.colorScheme.onSurface,
               icon: CustomIconWidget(
                 iconName: 'block',
-                color: AppTheme.lightTheme.colorScheme.onSurface,
+                color: theme.colorScheme.onSurface,
                 size: 24,
               ),
               label: Text(
                 'Limit Reached',
-                style: AppTheme.lightTheme.textTheme.labelLarge?.copyWith(
-                  color: AppTheme.lightTheme.colorScheme.onSurface,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.onSurface,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -243,6 +245,7 @@ class _GroupsScreenState extends State<GroupsScreen>
   }
 
   Widget _buildMyEqubsTab() {
+    final theme = Theme.of(context);
     final filteredGroups = _getFilteredGroups(_myEqubs);
 
     if (filteredGroups.isEmpty && _searchQuery.isEmpty) {
@@ -286,15 +289,15 @@ class _GroupsScreenState extends State<GroupsScreen>
             padding: EdgeInsets.all(3.w),
             decoration: BoxDecoration(
               color: _myEqubs.length >= MAX_MY_EQUBS
-                  ? AppTheme.lightTheme.colorScheme.errorContainer
-                  : AppTheme.lightTheme.colorScheme.primaryContainer,
+                  ? theme.colorScheme.errorContainer
+                  : theme.colorScheme.primaryContainer,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: _myEqubs.length >= MAX_MY_EQUBS
-                    ? AppTheme.lightTheme.colorScheme.error.withValues(
+                    ? theme.colorScheme.error.withValues(
                         alpha: 0.3,
                       )
-                    : AppTheme.lightTheme.colorScheme.primary.withValues(
+                    : theme.colorScheme.primary.withValues(
                         alpha: 0.3,
                       ),
               ),
@@ -306,8 +309,8 @@ class _GroupsScreenState extends State<GroupsScreen>
                       ? 'warning'
                       : 'info',
                   color: _myEqubs.length >= MAX_MY_EQUBS
-                      ? AppTheme.lightTheme.colorScheme.error
-                      : AppTheme.lightTheme.colorScheme.primary,
+                      ? theme.colorScheme.error
+                      : theme.colorScheme.primary,
                   size: 20,
                 ),
                 SizedBox(width: 3.w),
@@ -316,10 +319,10 @@ class _GroupsScreenState extends State<GroupsScreen>
                     _myEqubs.length >= MAX_MY_EQUBS
                         ? 'You have reached the maximum limit of $MAX_MY_EQUBS Equb group.'
                         : 'You can create ${MAX_MY_EQUBS - _myEqubs.length} more Equb group.',
-                    style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
+                    style: theme.textTheme.bodySmall?.copyWith(
                       color: _myEqubs.length >= MAX_MY_EQUBS
-                          ? AppTheme.lightTheme.colorScheme.error
-                          : AppTheme.lightTheme.colorScheme.primary,
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.primary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -347,6 +350,7 @@ class _GroupsScreenState extends State<GroupsScreen>
   }
 
   Widget _buildJoinedEqubsTab() {
+    final theme = Theme.of(context);
     final filteredGroups = _getFilteredGroups(_joinedEqubs);
 
     if (filteredGroups.isEmpty && _searchQuery.isEmpty) {
@@ -390,15 +394,15 @@ class _GroupsScreenState extends State<GroupsScreen>
             padding: EdgeInsets.all(3.w),
             decoration: BoxDecoration(
               color: _joinedEqubs.length >= MAX_JOINED_EQUBS
-                  ? AppTheme.lightTheme.colorScheme.errorContainer
-                  : AppTheme.lightTheme.colorScheme.primaryContainer,
+                  ? theme.colorScheme.errorContainer
+                  : theme.colorScheme.primaryContainer,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: _joinedEqubs.length >= MAX_JOINED_EQUBS
-                    ? AppTheme.lightTheme.colorScheme.error.withValues(
+                    ? theme.colorScheme.error.withValues(
                         alpha: 0.3,
                       )
-                    : AppTheme.lightTheme.colorScheme.primary.withValues(
+                    : theme.colorScheme.primary.withValues(
                         alpha: 0.3,
                       ),
               ),
@@ -410,8 +414,8 @@ class _GroupsScreenState extends State<GroupsScreen>
                       ? 'warning'
                       : 'info',
                   color: _joinedEqubs.length >= MAX_JOINED_EQUBS
-                      ? AppTheme.lightTheme.colorScheme.error
-                      : AppTheme.lightTheme.colorScheme.primary,
+                      ? theme.colorScheme.error
+                      : theme.colorScheme.primary,
                   size: 20,
                 ),
                 SizedBox(width: 3.w),
@@ -420,10 +424,10 @@ class _GroupsScreenState extends State<GroupsScreen>
                     _joinedEqubs.length >= MAX_JOINED_EQUBS
                         ? 'You have reached the maximum limit of $MAX_JOINED_EQUBS joined groups.'
                         : 'You can join ${MAX_JOINED_EQUBS - _joinedEqubs.length} more groups.',
-                    style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
+                    style: theme.textTheme.bodySmall?.copyWith(
                       color: _joinedEqubs.length >= MAX_JOINED_EQUBS
-                          ? AppTheme.lightTheme.colorScheme.error
-                          : AppTheme.lightTheme.colorScheme.primary,
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.primary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -451,6 +455,7 @@ class _GroupsScreenState extends State<GroupsScreen>
   }
 
   Widget _buildSystemGroupsTab() {
+    final theme = Theme.of(context);
     final filteredGroups = _getFilteredGroups(_systemGroups);
 
     if (filteredGroups.isEmpty && _searchQuery.isEmpty) {
@@ -507,6 +512,7 @@ class _GroupsScreenState extends State<GroupsScreen>
       return;
     }
 
+    final theme = Theme.of(context);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -524,6 +530,7 @@ class _GroupsScreenState extends State<GroupsScreen>
   }
 
   void _showLimitReachedDialog(String action) {
+    final theme = Theme.of(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -531,15 +538,15 @@ class _GroupsScreenState extends State<GroupsScreen>
           children: [
             CustomIconWidget(
               iconName: 'warning',
-              color: AppTheme.lightTheme.colorScheme.error,
+              color: theme.colorScheme.error,
               size: 24,
             ),
             SizedBox(width: 3.w),
             Text(
               'Limit Reached',
-              style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+              style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: AppTheme.lightTheme.colorScheme.error,
+                color: theme.colorScheme.error,
               ),
             ),
           ],
@@ -548,8 +555,8 @@ class _GroupsScreenState extends State<GroupsScreen>
           action == 'create'
               ? 'You can only create one Equb group. To create a new group, you must delete your existing group first.'
               : 'You can only join up to $MAX_JOINED_EQUBS groups. To join a new group, you must leave one of your current groups first.',
-          style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-            color: AppTheme.lightTheme.colorScheme.onSurface.withValues(
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(
               alpha: 0.8,
             ),
           ),
@@ -559,8 +566,8 @@ class _GroupsScreenState extends State<GroupsScreen>
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Understand',
-              style: AppTheme.lightTheme.textTheme.labelLarge?.copyWith(
-                color: AppTheme.lightTheme.colorScheme.primary,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.primary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -571,12 +578,13 @@ class _GroupsScreenState extends State<GroupsScreen>
   }
 
   void _showGroupDetails(Map<String, dynamic> groupData) {
+    final theme = Theme.of(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(
           groupData['name'] as String,
-          style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+          style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -588,8 +596,8 @@ class _GroupsScreenState extends State<GroupsScreen>
               if ((groupData['description'] as String).isNotEmpty) ...[
                 Text(
                   groupData['description'] as String,
-                  style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.lightTheme.colorScheme.onSurface.withValues(
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(
                       alpha: 0.7,
                     ),
                   ),
@@ -618,8 +626,8 @@ class _GroupsScreenState extends State<GroupsScreen>
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Close',
-              style: AppTheme.lightTheme.textTheme.labelLarge?.copyWith(
-                color: AppTheme.lightTheme.colorScheme.primary,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.primary,
               ),
             ),
           ),
@@ -631,8 +639,8 @@ class _GroupsScreenState extends State<GroupsScreen>
               },
               child: Text(
                 'Manage',
-                style: AppTheme.lightTheme.textTheme.labelLarge?.copyWith(
-                  color: AppTheme.lightTheme.colorScheme.onPrimary,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.onPrimary,
                 ),
               ),
             ),
@@ -642,6 +650,7 @@ class _GroupsScreenState extends State<GroupsScreen>
   }
 
   Widget _buildDetailRow(String label, String value) {
+    final theme = Theme.of(context);
     return Padding(
       padding: EdgeInsets.only(bottom: 1.h),
       child: Row(
@@ -651,9 +660,9 @@ class _GroupsScreenState extends State<GroupsScreen>
             width: 20.w,
             child: Text(
               '$label:',
-              style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
+              style: theme.textTheme.bodySmall?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: AppTheme.lightTheme.colorScheme.onSurface.withValues(
+                color: theme.colorScheme.onSurface.withValues(
                   alpha: 0.7,
                 ),
               ),
@@ -662,8 +671,8 @@ class _GroupsScreenState extends State<GroupsScreen>
           Expanded(
             child: Text(
               value,
-              style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
-                color: AppTheme.lightTheme.colorScheme.onSurface,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface,
               ),
             ),
           ),
@@ -673,12 +682,13 @@ class _GroupsScreenState extends State<GroupsScreen>
   }
 
   void _showGroupOptions(Map<String, dynamic> groupData) {
+    final theme = Theme.of(context);
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         decoration: BoxDecoration(
-          color: AppTheme.lightTheme.colorScheme.surface,
+          color: theme.colorScheme.surface,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
@@ -689,19 +699,19 @@ class _GroupsScreenState extends State<GroupsScreen>
               height: 0.5.h,
               margin: EdgeInsets.symmetric(vertical: 1.h),
               decoration: BoxDecoration(
-                color: AppTheme.lightTheme.colorScheme.outline,
+                color: theme.colorScheme.outline,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             ListTile(
               leading: CustomIconWidget(
                 iconName: 'visibility',
-                color: AppTheme.lightTheme.colorScheme.primary,
+                color: theme.colorScheme.primary,
                 size: 24,
               ),
               title: Text(
                 'View Details',
-                style: AppTheme.lightTheme.textTheme.bodyLarge,
+                style: theme.textTheme.bodyLarge,
               ),
               onTap: () {
                 Navigator.pop(context);
@@ -712,12 +722,12 @@ class _GroupsScreenState extends State<GroupsScreen>
               ListTile(
                 leading: CustomIconWidget(
                   iconName: 'people',
-                  color: AppTheme.lightTheme.colorScheme.primary,
+                  color: theme.colorScheme.primary,
                   size: 24,
                 ),
                 title: Text(
                   'Member Management',
-                  style: AppTheme.lightTheme.textTheme.bodyLarge,
+                  style: theme.textTheme.bodyLarge,
                 ),
                 onTap: () {
                   Navigator.pop(context);
@@ -727,12 +737,12 @@ class _GroupsScreenState extends State<GroupsScreen>
               ListTile(
                 leading: CustomIconWidget(
                   iconName: 'settings',
-                  color: AppTheme.lightTheme.colorScheme.primary,
+                  color: theme.colorScheme.primary,
                   size: 24,
                 ),
                 title: Text(
                   'Group Settings',
-                  style: AppTheme.lightTheme.textTheme.bodyLarge,
+                  style: theme.textTheme.bodyLarge,
                 ),
                 onTap: () {
                   Navigator.pop(context);
@@ -742,13 +752,13 @@ class _GroupsScreenState extends State<GroupsScreen>
               ListTile(
                 leading: CustomIconWidget(
                   iconName: 'delete',
-                  color: AppTheme.lightTheme.colorScheme.error,
+                  color: theme.colorScheme.error,
                   size: 24,
                 ),
                 title: Text(
                   'Delete Group',
-                  style: AppTheme.lightTheme.textTheme.bodyLarge?.copyWith(
-                    color: AppTheme.lightTheme.colorScheme.error,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.error,
                   ),
                 ),
                 onTap: () {
@@ -760,13 +770,13 @@ class _GroupsScreenState extends State<GroupsScreen>
               ListTile(
                 leading: CustomIconWidget(
                   iconName: 'exit_to_app',
-                  color: AppTheme.lightTheme.colorScheme.error,
+                  color: theme.colorScheme.error,
                   size: 24,
                 ),
                 title: Text(
                   'Leave Group',
-                  style: AppTheme.lightTheme.textTheme.bodyLarge?.copyWith(
-                    color: AppTheme.lightTheme.colorScheme.error,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.error,
                   ),
                 ),
                 onTap: () {
@@ -778,12 +788,12 @@ class _GroupsScreenState extends State<GroupsScreen>
             ListTile(
               leading: CustomIconWidget(
                 iconName: 'share',
-                color: AppTheme.lightTheme.colorScheme.primary,
+                color: theme.colorScheme.primary,
                 size: 24,
               ),
               title: Text(
                 'Share Group',
-                style: AppTheme.lightTheme.textTheme.bodyLarge,
+                style: theme.textTheme.bodyLarge,
               ),
               onTap: () {
                 Navigator.pop(context);
@@ -798,6 +808,7 @@ class _GroupsScreenState extends State<GroupsScreen>
   }
 
   void _showDeleteConfirmation(Map<String, dynamic> groupData) {
+    final theme = Theme.of(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -805,23 +816,23 @@ class _GroupsScreenState extends State<GroupsScreen>
           children: [
             CustomIconWidget(
               iconName: 'warning',
-              color: AppTheme.lightTheme.colorScheme.error,
+              color: theme.colorScheme.error,
               size: 24,
             ),
             SizedBox(width: 3.w),
             Text(
               'Delete Group',
-              style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+              style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: AppTheme.lightTheme.colorScheme.error,
+                color: theme.colorScheme.error,
               ),
             ),
           ],
         ),
         content: Text(
           'Are you sure you want to delete "${groupData['name']}"? This action cannot be undone and all group data will be permanently removed.',
-          style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-            color: AppTheme.lightTheme.colorScheme.onSurface.withValues(
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(
               alpha: 0.8,
             ),
           ),
@@ -831,8 +842,8 @@ class _GroupsScreenState extends State<GroupsScreen>
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cancel',
-              style: AppTheme.lightTheme.textTheme.labelLarge?.copyWith(
-                color: AppTheme.lightTheme.colorScheme.primary,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.primary,
               ),
             ),
           ),
@@ -847,17 +858,17 @@ class _GroupsScreenState extends State<GroupsScreen>
                   content: Text(
                     'Group "${groupData['name']}" deleted successfully',
                   ),
-                  backgroundColor: AppTheme.lightTheme.colorScheme.error,
+                  backgroundColor: theme.colorScheme.error,
                 ),
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.lightTheme.colorScheme.error,
+              backgroundColor: theme.colorScheme.error,
             ),
             child: Text(
               'Delete',
-              style: AppTheme.lightTheme.textTheme.labelLarge?.copyWith(
-                color: AppTheme.lightTheme.colorScheme.onError,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.onError,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -868,6 +879,7 @@ class _GroupsScreenState extends State<GroupsScreen>
   }
 
   void _showLeaveConfirmation(Map<String, dynamic> groupData) {
+    final theme = Theme.of(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -875,23 +887,23 @@ class _GroupsScreenState extends State<GroupsScreen>
           children: [
             CustomIconWidget(
               iconName: 'warning',
-              color: AppTheme.lightTheme.colorScheme.error,
+              color: theme.colorScheme.error,
               size: 24,
             ),
             SizedBox(width: 3.w),
             Text(
               'Leave Group',
-              style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+              style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: AppTheme.lightTheme.colorScheme.error,
+                color: theme.colorScheme.error,
               ),
             ),
           ],
         ),
         content: Text(
           'Are you sure you want to leave "${groupData['name']}"? You will need to request to join again if you change your mind.',
-          style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-            color: AppTheme.lightTheme.colorScheme.onSurface.withValues(
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(
               alpha: 0.8,
             ),
           ),
@@ -901,8 +913,8 @@ class _GroupsScreenState extends State<GroupsScreen>
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cancel',
-              style: AppTheme.lightTheme.textTheme.labelLarge?.copyWith(
-                color: AppTheme.lightTheme.colorScheme.primary,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.primary,
               ),
             ),
           ),
@@ -919,17 +931,17 @@ class _GroupsScreenState extends State<GroupsScreen>
                   content: Text(
                     'Left group "${groupData['name']}" successfully',
                   ),
-                  backgroundColor: AppTheme.lightTheme.colorScheme.error,
+                  backgroundColor: theme.colorScheme.error,
                 ),
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.lightTheme.colorScheme.error,
+              backgroundColor: theme.colorScheme.error,
             ),
             child: Text(
               'Leave',
-              style: AppTheme.lightTheme.textTheme.labelLarge?.copyWith(
-                color: AppTheme.lightTheme.colorScheme.onError,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.onError,
                 fontWeight: FontWeight.w600,
               ),
             ),

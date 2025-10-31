@@ -37,7 +37,7 @@ class _GroupCreationModalState extends State<GroupCreationModal> {
     return Container(
       height: 85.h,
       decoration: BoxDecoration(
-        color: AppTheme.lightTheme.colorScheme.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
@@ -47,7 +47,7 @@ class _GroupCreationModalState extends State<GroupCreationModal> {
             height: 0.5.h,
             margin: EdgeInsets.symmetric(vertical: 1.h),
             decoration: BoxDecoration(
-              color: AppTheme.lightTheme.colorScheme.outline,
+              color: Theme.of(context).colorScheme.outline,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -57,7 +57,7 @@ class _GroupCreationModalState extends State<GroupCreationModal> {
               children: [
                 Text(
                   'Create New Equb',
-                  style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -66,7 +66,7 @@ class _GroupCreationModalState extends State<GroupCreationModal> {
                   onPressed: () => Navigator.pop(context),
                   icon: CustomIconWidget(
                     iconName: 'close',
-                    color: AppTheme.lightTheme.colorScheme.onSurface,
+                    color: Theme.of(context).colorScheme.onSurface,
                     size: 24,
                   ),
                 ),
@@ -84,7 +84,7 @@ class _GroupCreationModalState extends State<GroupCreationModal> {
                     SizedBox(height: 2.h),
                     Text(
                       'Group Name',
-                      style: AppTheme.lightTheme.textTheme.titleSmall?.copyWith(
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -97,7 +97,7 @@ class _GroupCreationModalState extends State<GroupCreationModal> {
                           padding: EdgeInsets.all(3.w),
                           child: CustomIconWidget(
                             iconName: 'group',
-                            color: AppTheme.lightTheme.colorScheme.primary,
+                            color: Theme.of(context).colorScheme.primary,
                             size: 20,
                           ),
                         ),
@@ -112,7 +112,7 @@ class _GroupCreationModalState extends State<GroupCreationModal> {
                     SizedBox(height: 3.h),
                     Text(
                       'Description',
-                      style: AppTheme.lightTheme.textTheme.titleSmall?.copyWith(
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -126,7 +126,7 @@ class _GroupCreationModalState extends State<GroupCreationModal> {
                           padding: EdgeInsets.all(3.w),
                           child: CustomIconWidget(
                             iconName: 'description',
-                            color: AppTheme.lightTheme.colorScheme.primary,
+                            color: Theme.of(context).colorScheme.primary,
                             size: 20,
                           ),
                         ),
@@ -135,7 +135,7 @@ class _GroupCreationModalState extends State<GroupCreationModal> {
                     SizedBox(height: 3.h),
                     Text(
                       'Contribution Amount (ETB)',
-                      style: AppTheme.lightTheme.textTheme.titleSmall?.copyWith(
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -149,7 +149,7 @@ class _GroupCreationModalState extends State<GroupCreationModal> {
                           padding: EdgeInsets.all(3.w),
                           child: CustomIconWidget(
                             iconName: 'account_balance_wallet',
-                            color: AppTheme.lightTheme.colorScheme.primary,
+                            color: Theme.of(context).colorScheme.primary,
                             size: 20,
                           ),
                         ),
@@ -167,7 +167,7 @@ class _GroupCreationModalState extends State<GroupCreationModal> {
                     SizedBox(height: 3.h),
                     Text(
                       'Maximum Members',
-                      style: AppTheme.lightTheme.textTheme.titleSmall?.copyWith(
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -181,7 +181,7 @@ class _GroupCreationModalState extends State<GroupCreationModal> {
                           padding: EdgeInsets.all(3.w),
                           child: CustomIconWidget(
                             iconName: 'people',
-                            color: AppTheme.lightTheme.colorScheme.primary,
+                            color: Theme.of(context).colorScheme.primary,
                             size: 20,
                           ),
                         ),
@@ -200,7 +200,7 @@ class _GroupCreationModalState extends State<GroupCreationModal> {
                     SizedBox(height: 3.h),
                     Text(
                       'Contribution Frequency',
-                      style: AppTheme.lightTheme.textTheme.titleSmall?.copyWith(
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -209,10 +209,10 @@ class _GroupCreationModalState extends State<GroupCreationModal> {
                       width: double.infinity,
                       padding: EdgeInsets.symmetric(horizontal: 4.w),
                       decoration: BoxDecoration(
-                        color: AppTheme.lightTheme.colorScheme.surface,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: AppTheme.lightTheme.colorScheme.outline,
+                          color: Theme.of(context).colorScheme.outline,
                         ),
                       ),
                       child: DropdownButtonHideUnderline(
@@ -221,7 +221,7 @@ class _GroupCreationModalState extends State<GroupCreationModal> {
                           isExpanded: true,
                           icon: CustomIconWidget(
                             iconName: 'keyboard_arrow_down',
-                            color: AppTheme.lightTheme.colorScheme.onSurface,
+                            color: Theme.of(context).colorScheme.onSurface,
                             size: 24,
                           ),
                           items: _frequencies.map((String frequency) {
@@ -229,7 +229,7 @@ class _GroupCreationModalState extends State<GroupCreationModal> {
                               value: frequency,
                               child: Text(
                                 frequency,
-                                style: AppTheme.lightTheme.textTheme.bodyMedium,
+                                style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             );
                           }).toList(),
@@ -252,10 +252,10 @@ class _GroupCreationModalState extends State<GroupCreationModal> {
           Container(
             padding: EdgeInsets.all(4.w),
             decoration: BoxDecoration(
-              color: AppTheme.lightTheme.colorScheme.surface,
+              color: Theme.of(context).colorScheme.surface,
               border: Border(
                 top: BorderSide(
-                  color: AppTheme.lightTheme.colorScheme.outline.withValues(
+                  color: Theme.of(context).colorScheme.outline.withValues(
                     alpha: 0.3,
                   ),
                 ),
@@ -268,8 +268,8 @@ class _GroupCreationModalState extends State<GroupCreationModal> {
                     onPressed: () => Navigator.pop(context),
                     child: Text(
                       'Cancel',
-                      style: AppTheme.lightTheme.textTheme.labelLarge?.copyWith(
-                        color: AppTheme.lightTheme.colorScheme.onSurface,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                   ),
@@ -281,8 +281,8 @@ class _GroupCreationModalState extends State<GroupCreationModal> {
                     onPressed: _createGroup,
                     child: Text(
                       'Create Equb',
-                      style: AppTheme.lightTheme.textTheme.labelLarge?.copyWith(
-                        color: AppTheme.lightTheme.colorScheme.onPrimary,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

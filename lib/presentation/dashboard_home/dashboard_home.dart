@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/app_export.dart';
 import './widgets/activity_item.dart';
 import './widgets/empty_state_widget.dart';
 import './widgets/quick_action_button.dart';
 import './widgets/user_status_card.dart';
-import './widgets/verification_badge.dart';
-import '/presentation/groups_screen/groups_screen.dart';
+import '../../l10n/app_localizations.dart';
 
 class DashboardHome extends StatefulWidget {
   const DashboardHome({Key? key}) : super(key: key);
@@ -117,10 +116,7 @@ class _DashboardHomeState extends State<DashboardHome>
     setState(() {
       _isRefreshing = true;
     });
-
-    // Simulate API call
     await Future.delayed(const Duration(seconds: 2));
-
     setState(() {
       _isRefreshing = false;
     });
@@ -131,10 +127,8 @@ class _DashboardHomeState extends State<DashboardHome>
       _selectedIndex = index;
     });
 
-    // Navigate to different screens based on tab selection
     switch (index) {
       case 0:
-        // Already on Home - no navigation needed
         break;
       case 1:
         Navigator.pushNamed(context, AppRoutes.browseEqubGroups);
@@ -148,66 +142,56 @@ class _DashboardHomeState extends State<DashboardHome>
     }
   }
 
-  void _navigateToProfile() {
-    Navigator.pushNamed(context, AppRoutes.userProfile);
-  }
-
-  void _navigateToCreateEqub() {
-    Navigator.pushNamed(context, AppRoutes.createEqub);
-  }
-
-  void _navigateToJoinEqub() {
-    Navigator.pushNamed(context, AppRoutes.browseEqubGroups);
-  }
-
-  void _navigateToPaymentHistory() {
-    Navigator.pushNamed(context, AppRoutes.paymentProcessing);
-  }
+  void _navigateToProfile() =>
+      Navigator.pushNamed(context, AppRoutes.userProfile);
+  void _navigateToCreateEqub() =>
+      Navigator.pushNamed(context, AppRoutes.createEqub);
+  void _navigateToJoinEqub() =>
+      Navigator.pushNamed(context, AppRoutes.browseEqubGroups);
+  void _navigateToPaymentHistory() =>
+      Navigator.pushNamed(context, AppRoutes.paymentProcessing);
 
   void _navigateToEqubDetails(Map<String, dynamic> equb) {
-    // Navigation logic would be implemented here
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Viewing details for ${equb["title"]}'),
-        backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+        backgroundColor: Theme.of(context).colorScheme.primary,
       ),
     );
   }
 
   void _handleActivityTap(Map<String, dynamic> activity) {
-    // Handle activity item tap
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Activity: ${activity["title"]}'),
-        backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+        backgroundColor: Theme.of(context).colorScheme.primary,
       ),
     );
   }
 
   void _showNewPaymentDialog() {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(
-            'New Payment',
-            style: AppTheme.lightTheme.textTheme.titleLarge,
-          ),
+          title: Text(l10n?.payment ?? 'New Payment', style: theme.textTheme.titleLarge),
           content: Text(
-            'Select an Equb group to make a payment.',
-            style: AppTheme.lightTheme.textTheme.bodyMedium,
+            l10n?.selectPaymentMethod ?? 'Select an Equb group to make a payment.',
+            style: theme.textTheme.bodyMedium,
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel'),
+              child: Text(l10n?.cancel ?? 'Cancel', style: theme.textTheme.bodyMedium),
             ),
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
                 Navigator.pushNamed(context, AppRoutes.paymentProcessing);
               },
-              child: Text('Continue'),
+              child: Text(l10n?.continueButton ?? 'Continue', style: theme.textTheme.bodyMedium),
             ),
           ],
         );
@@ -215,10 +199,10 @@ class _DashboardHomeState extends State<DashboardHome>
     );
   }
 
-  Widget _buildEqubCards() {
-    if (userEqubs.isEmpty) {
+  Widget _buildEqubCards(ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
+    if (userEqubs.isEmpty)
       return EmptyStateWidget(onCreateEqub: _navigateToCreateEqub);
-    }
 
     return SizedBox(
       height: 20.h,
@@ -234,13 +218,13 @@ class _DashboardHomeState extends State<DashboardHome>
           return UserStatusCard(
             title: equb["title"] as String,
             subtitle: isOwner
-                ? "You own this Equb • ${equb["memberCount"]} members"
-                : "Member • Round ${equb["currentRound"]}/${equb["totalRounds"]}",
-            amount: "${equb["totalAmount"]} ETB",
+                ? "${l10n?.owner ?? 'Owner'} • ${equb["memberCount"]} ${l10n?.members ?? 'members'}"
+                : "${l10n?.members ?? 'Member'} • ${l10n?.round ?? 'Round'} ${equb["currentRound"]}/${equb["totalRounds"]}",
+            amount: "${equb["totalAmount"]} ${l10n?.etb ?? 'ETB'}",
             progress: progress,
             progressColor: isOwner
-                ? AppTheme.lightTheme.colorScheme.primary
-                : AppTheme.getSuccessColor(true),
+                ? theme.colorScheme.primary
+                : AppTheme.getSuccessColorFromContext(context),
             onTap: () => _navigateToEqubDetails(equb),
           );
         },
@@ -248,17 +232,18 @@ class _DashboardHomeState extends State<DashboardHome>
     );
   }
 
-  Widget _buildQuickActions() {
+  Widget _buildQuickActions(ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Quick Actions',
-            style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+            l10n?.quickActions ?? 'Quick Actions',
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
-              color: AppTheme.lightTheme.colorScheme.onSurface,
+              color: theme.colorScheme.onSurface,
             ),
           ),
           SizedBox(height: 2.h),
@@ -266,15 +251,15 @@ class _DashboardHomeState extends State<DashboardHome>
             children: [
               Expanded(
                 child: QuickActionButton(
-                  title: 'Create New Equb',
+                  title: l10n?.createNewEqub ?? 'Create New Equb',
                   iconName: 'add_circle',
                   onTap: _navigateToCreateEqub,
-                  isEnabled: true, // always enabled
+                  isEnabled: true,
                 ),
               ),
               Expanded(
                 child: QuickActionButton(
-                  title: 'Browse Groups',
+                  title: l10n?.browseGroups ?? 'Browse Groups',
                   iconName: 'search',
                   onTap: _navigateToJoinEqub,
                   isEnabled: true,
@@ -282,7 +267,7 @@ class _DashboardHomeState extends State<DashboardHome>
               ),
               Expanded(
                 child: QuickActionButton(
-                  title: 'Payment History',
+                  title: l10n?.paymentHistory ?? 'Payment History',
                   iconName: 'history',
                   onTap: _navigateToPaymentHistory,
                   isEnabled: true,
@@ -295,17 +280,18 @@ class _DashboardHomeState extends State<DashboardHome>
     );
   }
 
-  Widget _buildRecentActivity() {
+  Widget _buildRecentActivity(ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 4.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Recent Activity',
-            style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+            l10n?.recentActivity ?? 'Recent Activity',
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
-              color: AppTheme.lightTheme.colorScheme.onSurface,
+              color: theme.colorScheme.onSurface,
             ),
           ),
           SizedBox(height: 1.h),
@@ -332,16 +318,17 @@ class _DashboardHomeState extends State<DashboardHome>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+
     return Scaffold(
-      backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
+        backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 10,
         titleSpacing: 3,
         title: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            // Circular logo placeholder
             Container(
               width: 50,
               height: 50,
@@ -352,15 +339,12 @@ class _DashboardHomeState extends State<DashboardHome>
               child: Icon(Icons.account_balance, color: Colors.grey.shade700),
             ),
             const SizedBox(width: 10),
-
-            // Title with custom font
             Expanded(
               child: Text(
-                'Mirchaye Equb',
-                style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
-                  fontFamily: 'Roboto', // uses the family you defined
+                l10n?.appTitle ?? 'Mirchaye Equb',
+                style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: AppTheme.lightTheme.colorScheme.onSurface,
+                  color: theme.colorScheme.onSurface,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -369,17 +353,15 @@ class _DashboardHomeState extends State<DashboardHome>
         ),
         actions: [
           IconButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Notifications feature coming soon!'),
-                  backgroundColor: AppTheme.lightTheme.colorScheme.primary,
-                ),
-              );
-            },
+            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(l10n?.notifications ?? 'Notifications coming soon!'),
+                backgroundColor: theme.colorScheme.primary,
+              ),
+            ),
             icon: CustomIconWidget(
               iconName: 'notifications',
-              color: AppTheme.lightTheme.colorScheme.onSurface,
+              color: theme.colorScheme.onSurface,
               size: 24,
             ),
           ),
@@ -387,9 +369,9 @@ class _DashboardHomeState extends State<DashboardHome>
             onPressed: _navigateToProfile,
             icon: CircleAvatar(
               radius: 16,
-              backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+              backgroundColor: theme.colorScheme.primary,
               child: Text(
-                userData["name"].toString().substring(0, 1).toUpperCase(),
+                userData["name"].toString()[0].toUpperCase(),
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -398,94 +380,117 @@ class _DashboardHomeState extends State<DashboardHome>
               ),
             ),
           ),
+          IconButton(
+            onPressed: () async {
+              // Show confirmation dialog
+              final shouldLogout = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Logout'),
+                  content: const Text('Are you sure you want to logout?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Logout'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (shouldLogout == true) {
+                print('🚪 User manually logged out');
+                await FirebaseAuth.instance.signOut();
+                // AuthGate will automatically redirect to login screen
+              }
+            },
+            icon: Icon(
+              Icons.logout,
+              color: theme.colorScheme.error,
+              size: 24,
+            ),
+            tooltip: 'Logout',
+          ),
           const SizedBox(width: 10),
         ],
       ),
-
       body: RefreshIndicator(
         onRefresh: _handleRefresh,
-        color: AppTheme.lightTheme.colorScheme.primary,
+        color: theme.colorScheme.primary,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(height: 2.h),
-              _buildEqubCards(),
+              _buildEqubCards(theme),
               SizedBox(height: 2.h),
-              _buildQuickActions(),
+              _buildQuickActions(theme),
               SizedBox(height: 2.h),
-              _buildRecentActivity(),
-              SizedBox(height: 10.h), // Bottom padding for FAB
+              _buildRecentActivity(theme),
+              SizedBox(height: 10.h),
             ],
           ),
         ),
       ),
       floatingActionButton: userEqubs.isNotEmpty
           ? FloatingActionButton(
-              onPressed: () {
-                Navigator.pushNamed(context, AppRoutes.groupsScreen);
-              },
-              backgroundColor: AppTheme.lightTheme.colorScheme.primary,
-              child: Icon(
-                Icons
-                    .group, // <-- This changes the icon to the standard groups icon
-                color: Colors.white,
-                size: 24,
-              ),
+              onPressed: () =>
+                  Navigator.pushNamed(context, AppRoutes.groupsScreen),
+              backgroundColor: theme.colorScheme.primary,
+              child: Icon(Icons.group, color: Colors.white, size: 24),
             )
           : null,
-
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onBottomNavTap,
         type: BottomNavigationBarType.fixed,
-        backgroundColor:
-            AppTheme.lightTheme.bottomNavigationBarTheme.backgroundColor,
-        selectedItemColor:
-            AppTheme.lightTheme.bottomNavigationBarTheme.selectedItemColor,
-        unselectedItemColor:
-            AppTheme.lightTheme.bottomNavigationBarTheme.unselectedItemColor,
+        backgroundColor: theme.bottomNavigationBarTheme.backgroundColor,
+        selectedItemColor: theme.bottomNavigationBarTheme.selectedItemColor,
+        unselectedItemColor: theme.bottomNavigationBarTheme.unselectedItemColor,
         items: [
           BottomNavigationBarItem(
             icon: CustomIconWidget(
               iconName: 'home',
               color: _selectedIndex == 0
-                  ? AppTheme.lightTheme.colorScheme.primary
-                  : AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
               size: 24,
             ),
-            label: 'Home',
+            label: l10n?.home ?? 'Home',
           ),
           BottomNavigationBarItem(
             icon: CustomIconWidget(
               iconName: 'search',
               color: _selectedIndex == 1
-                  ? AppTheme.lightTheme.colorScheme.primary
-                  : AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
               size: 24,
             ),
-            label: 'Browse',
+            label: l10n?.browse ?? 'Browse',
           ),
           BottomNavigationBarItem(
             icon: CustomIconWidget(
               iconName: 'payment',
               color: _selectedIndex == 2
-                  ? AppTheme.lightTheme.colorScheme.primary
-                  : AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
               size: 24,
             ),
-            label: 'Payments',
+            label: l10n?.payments ?? 'Payments',
           ),
           BottomNavigationBarItem(
             icon: CustomIconWidget(
               iconName: 'person',
               color: _selectedIndex == 3
-                  ? AppTheme.lightTheme.colorScheme.primary
-                  : AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
               size: 24,
             ),
-            label: 'Profile',
+            label: l10n?.profile ?? 'Profile',
           ),
         ],
       ),

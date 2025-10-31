@@ -12,15 +12,17 @@ class ProfileCompletionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
       padding: EdgeInsets.all(4.w),
       decoration: BoxDecoration(
-        color: AppTheme.lightTheme.cardColor,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.lightTheme.shadowColor,
+            color: theme.shadowColor,
             blurRadius: 4,
             offset: const Offset(0, 1),
           ),
@@ -34,15 +36,15 @@ class ProfileCompletionBar extends StatelessWidget {
             children: [
               Text(
                 'Profile Completion',
-                style: AppTheme.lightTheme.textTheme.titleSmall?.copyWith(
+                style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
               ),
               Text(
                 '$completionPercentage%',
-                style: AppTheme.lightTheme.textTheme.titleSmall?.copyWith(
+                style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.lightTheme.colorScheme.primary,
+                  color: theme.colorScheme.primary,
                 ),
               ),
             ],
@@ -50,20 +52,16 @@ class ProfileCompletionBar extends StatelessWidget {
           SizedBox(height: 1.h),
           LinearProgressIndicator(
             value: completionPercentage / 100,
-            backgroundColor: AppTheme.lightTheme.colorScheme.outline.withValues(
-              alpha: 0.2,
-            ),
-            valueColor: AlwaysStoppedAnimation<Color>(
-              AppTheme.lightTheme.colorScheme.primary,
-            ),
+            backgroundColor: theme.colorScheme.outline.withValues(alpha: 0.2),
+            valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
             minHeight: 6,
           ),
           if (completionPercentage < 100) ...[
             SizedBox(height: 1.h),
             Text(
               'Complete your profile to enhance trust with other members',
-              style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
-                color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
           ],

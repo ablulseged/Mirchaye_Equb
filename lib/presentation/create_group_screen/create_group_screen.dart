@@ -532,8 +532,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen>
           ),
         );
 
-        // Navigate to group detail screen
-        Navigator.pushReplacementNamed(context, '/group-detail-screen');
+        // Navigate back to dashboard (groups screen)
+        Navigator.pushReplacementNamed(context, AppRoutes.dashboardHome);
       }
     } catch (e) {
       if (mounted) {

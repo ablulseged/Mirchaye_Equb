@@ -744,18 +744,33 @@ class AppTheme {
     );
   }
 
-  /// Helper method to get success color based on theme
+  /// Helper method to get success color based on theme (legacy)
   static Color getSuccessColor(bool isLight) {
     return isLight ? successLight : successDark;
   }
 
-  /// Helper method to get warning color based on theme
+  /// Helper method to get warning color based on theme (legacy)
   static Color getWarningColor(bool isLight) {
     return isLight ? warningLight : warningDark;
   }
 
-  /// Helper method to get error color based on theme
+  /// Helper method to get error color based on theme (legacy)
   static Color getErrorColor(bool isLight) {
     return isLight ? errorLight : errorDark;
+  }
+
+  /// Context-aware helper method to get success color
+  static Color getSuccessColorFromContext(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.light ? successLight : successDark;
+  }
+
+  /// Context-aware helper method to get warning color
+  static Color getWarningColorFromContext(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.light ? warningLight : warningDark;
+  }
+
+  /// Context-aware helper method to get error color from context
+  static Color getErrorColorFromContext(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.light ? errorLight : errorDark;
   }
 }

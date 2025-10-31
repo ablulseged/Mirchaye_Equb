@@ -25,13 +25,13 @@ class FilterChipWidget extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppTheme.lightTheme.colorScheme.primary
-              : AppTheme.lightTheme.colorScheme.surface,
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? AppTheme.lightTheme.colorScheme.primary
-                : AppTheme.lightTheme.colorScheme.outline,
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.outline,
             width: 1,
           ),
         ),
@@ -48,10 +48,10 @@ class FilterChipWidget extends StatelessWidget {
             ],
             Text(
               label,
-              style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: isSelected
                     ? Colors.white
-                    : AppTheme.lightTheme.colorScheme.onSurface,
+                    : Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -59,7 +59,7 @@ class FilterChipWidget extends StatelessWidget {
               SizedBox(width: 1.w),
               CustomIconWidget(
                 iconName: 'expand_more',
-                color: AppTheme.lightTheme.colorScheme.onSurface,
+                color: Theme.of(context).colorScheme.onSurface,
                 size: 14,
               ),
             ],

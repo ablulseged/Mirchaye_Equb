@@ -124,6 +124,7 @@ class _PaymentProcessingState extends State<PaymentProcessing>
   }
 
   void _showSuccessDialog() {
+    final theme = Theme.of(context);
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -142,7 +143,7 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                   width: 20.w,
                   height: 20.w,
                   decoration: BoxDecoration(
-                    color: AppTheme.getSuccessColor(true),
+                    color: AppTheme.getSuccessColorFromContext(context),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(Icons.check, color: Colors.white, size: 40),
@@ -151,9 +152,9 @@ class _PaymentProcessingState extends State<PaymentProcessing>
 
                 Text(
                   'Payment Successful!',
-                  style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+                  style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.getSuccessColor(true),
+                    color: AppTheme.getSuccessColorFromContext(context),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -161,8 +162,8 @@ class _PaymentProcessingState extends State<PaymentProcessing>
 
                 Text(
                   'Your contribution has been processed successfully.',
-                  style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -172,14 +173,14 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                   padding: EdgeInsets.all(3.w),
                   decoration: BoxDecoration(
                     color:
-                        AppTheme.lightTheme.colorScheme.surfaceContainerHighest,
+                        theme.colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                   child: Column(
                     children: [
                       Text(
                         'Transaction Reference',
-                        style: AppTheme.lightTheme.textTheme.bodySmall
+                        style: theme.textTheme.bodySmall
                             ?.copyWith(
                               color: AppTheme
                                   .lightTheme
@@ -239,7 +240,7 @@ class _PaymentProcessingState extends State<PaymentProcessing>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Receipt generated successfully'),
-        backgroundColor: AppTheme.getSuccessColor(true),
+        backgroundColor: AppTheme.getSuccessColorFromContext(context),
       ),
     );
   }
@@ -248,21 +249,23 @@ class _PaymentProcessingState extends State<PaymentProcessing>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: AppTheme.getErrorColor(true),
+        backgroundColor: AppTheme.getErrorColorFromContext(context),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
-      backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
+        backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         title: Text(
           'Payment Processing',
-          style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+          style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -270,7 +273,7 @@ class _PaymentProcessingState extends State<PaymentProcessing>
           onPressed: () => Navigator.of(context).pop(),
           icon: CustomIconWidget(
             iconName: 'arrow_back',
-            color: AppTheme.lightTheme.colorScheme.onSurface,
+            color: theme.colorScheme.onSurface,
             size: 24,
           ),
         ),
@@ -305,7 +308,7 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                   children: [
                     Text(
                       'Select Payment Method',
-                      style: AppTheme.lightTheme.textTheme.titleMedium
+                      style: theme.textTheme.titleMedium
                           ?.copyWith(fontWeight: FontWeight.w600),
                     ),
                     SizedBox(height: 2.h),
@@ -328,10 +331,10 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                 margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
                 padding: EdgeInsets.all(4.w),
                 decoration: BoxDecoration(
-                  color: AppTheme.lightTheme.cardColor,
+                  color: theme.cardColor,
                   borderRadius: BorderRadius.circular(12.0),
                   border: Border.all(
-                    color: AppTheme.lightTheme.colorScheme.outline,
+                    color: theme.colorScheme.outline,
                     width: 1.0,
                   ),
                 ),
@@ -340,7 +343,7 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                   children: [
                     Text(
                       'Recipient Details',
-                      style: AppTheme.lightTheme.textTheme.titleMedium
+                      style: theme.textTheme.titleMedium
                           ?.copyWith(fontWeight: FontWeight.w600),
                     ),
                     SizedBox(height: 2.h),
@@ -349,13 +352,13 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                         CustomIconWidget(
                           iconName: 'person',
                           color:
-                              AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                              theme.colorScheme.onSurfaceVariant,
                           size: 20,
                         ),
                         SizedBox(width: 3.w),
                         Text(
                           paymentData["adminName"],
-                          style: AppTheme.lightTheme.textTheme.bodyMedium,
+                          style: theme.textTheme.bodyMedium,
                         ),
                       ],
                     ),
@@ -365,13 +368,13 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                         CustomIconWidget(
                           iconName: 'phone',
                           color:
-                              AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                              theme.colorScheme.onSurfaceVariant,
                           size: 20,
                         ),
                         SizedBox(width: 3.w),
                         Text(
                           paymentData["adminPhone"],
-                          style: AppTheme.lightTheme.textTheme.bodyMedium,
+                          style: theme.textTheme.bodyMedium,
                         ),
                       ],
                     ),
@@ -381,7 +384,7 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                         CustomIconWidget(
                           iconName: 'account_balance',
                           color:
-                              AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                              theme.colorScheme.onSurfaceVariant,
                           size: 20,
                         ),
                         SizedBox(width: 3.w),
@@ -420,7 +423,7 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                       child: CircularProgressIndicator(
                         strokeWidth: 4.0,
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          AppTheme.lightTheme.colorScheme.primary,
+                          theme.colorScheme.primary,
                         ),
                       ),
                     ),
@@ -429,15 +432,15 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                       currentStage == PaymentStage.processing
                           ? 'Processing Payment...'
                           : 'Confirming Transaction...',
-                      style: AppTheme.lightTheme.textTheme.titleMedium
+                      style: theme.textTheme.titleMedium
                           ?.copyWith(fontWeight: FontWeight.w500),
                       textAlign: TextAlign.center,
                     ),
                     SizedBox(height: 1.h),
                     Text(
                       'Please wait while we process your contribution.',
-                      style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                       textAlign: TextAlign.center,
                     ),

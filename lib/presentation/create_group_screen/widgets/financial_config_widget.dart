@@ -95,7 +95,7 @@ class FinancialConfigWidget extends StatelessWidget {
                       min: 10,
                       max: 1000,
                       divisions: 99,
-                      label: '\$${contributionAmount.toInt()}',
+                      label: '\$Birr{contributionAmount.toInt()}',
                       onChanged: onContributionChanged,
                     ),
                   ),

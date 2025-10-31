@@ -16,15 +16,17 @@ class ProfileSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
       padding: EdgeInsets.all(4.w),
       decoration: BoxDecoration(
-        color: AppTheme.lightTheme.cardColor,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.lightTheme.shadowColor,
+            color: theme.shadowColor,
             blurRadius: 4,
             offset: const Offset(0, 1),
           ),
@@ -35,9 +37,9 @@ class ProfileSectionCard extends StatelessWidget {
         children: [
           Text(
             title,
-            style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
-              color: AppTheme.lightTheme.colorScheme.onSurface,
+              color: theme.colorScheme.onSurface,
             ),
           ),
           SizedBox(height: 2.h),

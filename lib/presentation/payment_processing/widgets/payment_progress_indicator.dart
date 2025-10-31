@@ -25,22 +25,25 @@ class PaymentProgressIndicator extends StatelessWidget {
           Row(
             children: [
               _buildStageIndicator(
+                context,
                 stage: PaymentStage.verification,
                 title: 'Verification',
                 isActive:
                     currentStage == PaymentStage.verification && !isCompleted,
                 isCompleted: _isStageCompleted(PaymentStage.verification),
               ),
-              _buildConnector(_isStageCompleted(PaymentStage.verification)),
+              _buildConnector(context, _isStageCompleted(PaymentStage.verification)),
               _buildStageIndicator(
+                context,
                 stage: PaymentStage.processing,
                 title: 'Processing',
                 isActive:
                     currentStage == PaymentStage.processing && !isCompleted,
                 isCompleted: _isStageCompleted(PaymentStage.processing),
               ),
-              _buildConnector(_isStageCompleted(PaymentStage.processing)),
+              _buildConnector(context, _isStageCompleted(PaymentStage.processing)),
               _buildStageIndicator(
+                context,
                 stage: PaymentStage.confirmation,
                 title: 'Confirmation',
                 isActive:
@@ -68,7 +71,7 @@ class PaymentProgressIndicator extends StatelessWidget {
     }
   }
 
-  Widget _buildStageIndicator({
+  Widget _buildStageIndicator(BuildContext context, {
     required PaymentStage stage,
     required String title,
     required bool isActive,
@@ -79,15 +82,15 @@ class PaymentProgressIndicator extends StatelessWidget {
     IconData? iconData;
 
     if (isCompleted) {
-      indicatorColor = AppTheme.getSuccessColor(true);
-      textColor = AppTheme.getSuccessColor(true);
+      indicatorColor = AppTheme.getSuccessColorFromContext(context);
+      textColor = AppTheme.getSuccessColorFromContext(context);
       iconData = Icons.check;
     } else if (isActive) {
-      indicatorColor = AppTheme.lightTheme.colorScheme.primary;
-      textColor = AppTheme.lightTheme.colorScheme.primary;
+      indicatorColor = Theme.of(context).colorScheme.primary;
+      textColor = Theme.of(context).colorScheme.primary;
     } else {
-      indicatorColor = AppTheme.lightTheme.colorScheme.outline;
-      textColor = AppTheme.lightTheme.colorScheme.onSurfaceVariant;
+      indicatorColor = Theme.of(context).colorScheme.outline;
+      textColor = Theme.of(context).colorScheme.onSurfaceVariant;
     }
 
     return Expanded(
@@ -118,7 +121,7 @@ class PaymentProgressIndicator extends StatelessWidget {
           SizedBox(height: 1.h),
           Text(
             title,
-            style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: textColor,
               fontWeight: isActive || isCompleted
                   ? FontWeight.w500
@@ -131,15 +134,15 @@ class PaymentProgressIndicator extends StatelessWidget {
     );
   }
 
-  Widget _buildConnector(bool isCompleted) {
+  Widget _buildConnector(BuildContext context, bool isCompleted) {
     return Expanded(
       child: Container(
         height: 2,
         margin: EdgeInsets.symmetric(horizontal: 2.w),
         decoration: BoxDecoration(
           color: isCompleted
-              ? AppTheme.getSuccessColor(true)
-              : AppTheme.lightTheme.colorScheme.outline,
+              ? AppTheme.getSuccessColorFromContext(context)
+              : Theme.of(context).colorScheme.outline,
           borderRadius: BorderRadius.circular(1),
         ),
       ),

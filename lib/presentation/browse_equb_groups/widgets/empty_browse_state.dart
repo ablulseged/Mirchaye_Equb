@@ -17,28 +17,28 @@ class EmptyBrowseState extends StatelessWidget {
             Container(
               padding: EdgeInsets.all(8.w),
               decoration: BoxDecoration(
-                color: AppTheme.lightTheme.colorScheme.primaryContainer,
+                color: Theme.of(context).colorScheme.primaryContainer,
                 shape: BoxShape.circle,
               ),
               child: CustomIconWidget(
                 iconName: 'groups',
-                color: AppTheme.lightTheme.colorScheme.primary,
+                color: Theme.of(context).colorScheme.primary,
                 size: 64,
               ),
             ),
             SizedBox(height: 4.h),
             Text(
               'No Groups Found',
-              style: AppTheme.lightTheme.textTheme.headlineSmall?.copyWith(
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: AppTheme.lightTheme.colorScheme.onSurface,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             SizedBox(height: 2.h),
             Text(
               'Try adjusting your search or filters to find Equb groups that match your interests.',
-              style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
@@ -52,7 +52,7 @@ class EmptyBrowseState extends StatelessWidget {
                       content: Text(
                         'Create Your Own Group feature coming soon!',
                       ),
-                      backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
                     ),
                   );
                 },

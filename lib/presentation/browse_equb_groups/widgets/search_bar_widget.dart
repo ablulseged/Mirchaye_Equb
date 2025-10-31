@@ -51,7 +51,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
             padding: EdgeInsets.all(3.w),
             child: CustomIconWidget(
               iconName: 'search',
-              color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               size: 20,
             ),
           ),
@@ -62,7 +62,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
                     padding: EdgeInsets.all(3.w),
                     child: CustomIconWidget(
                       iconName: 'clear',
-                      color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       size: 20,
                     ),
                   ),
@@ -71,29 +71,29 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(
-              color: AppTheme.lightTheme.colorScheme.outline,
+              color: Theme.of(context).colorScheme.outline,
               width: 1,
             ),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(
-              color: AppTheme.lightTheme.colorScheme.outline,
+              color: Theme.of(context).colorScheme.outline,
               width: 1,
             ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(
-              color: AppTheme.lightTheme.colorScheme.primary,
+              color: Theme.of(context).colorScheme.primary,
               width: 2,
             ),
           ),
           filled: true,
-          fillColor: AppTheme.lightTheme.colorScheme.surface,
+          fillColor: Theme.of(context).colorScheme.surface,
           contentPadding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
         ),
-        style: AppTheme.lightTheme.textTheme.bodyMedium,
+        style: Theme.of(context).textTheme.bodyMedium,
         textInputAction: TextInputAction.search,
       ),
     );

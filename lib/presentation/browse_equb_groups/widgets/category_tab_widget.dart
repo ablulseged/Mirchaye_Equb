@@ -16,7 +16,7 @@ class CategoryTabWidget extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: 3.w),
         child: Text(
           title,
-          style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             fontWeight: FontWeight.w500,
           ),
           overflow: TextOverflow.ellipsis,

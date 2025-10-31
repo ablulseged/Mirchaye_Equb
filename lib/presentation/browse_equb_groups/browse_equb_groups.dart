@@ -250,6 +250,7 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
   }
 
   void _showAdvancedFilters() {
+    final theme = Theme.of(context);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -270,7 +271,7 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
                     children: [
                       Text(
                         'Advanced Filters',
-                        style: AppTheme.lightTheme.textTheme.titleLarge
+                        style: theme.textTheme.titleLarge
                             ?.copyWith(fontWeight: FontWeight.w600),
                       ),
                       TextButton(
@@ -352,12 +353,13 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
     String selectedValue,
     ValueChanged<String> onChanged,
   ) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+          style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -389,6 +391,7 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
   }
 
   void _showGroupDetails(Map<String, dynamic> group) {
+    final theme = Theme.of(context);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -408,7 +411,7 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
                   Expanded(
                     child: Text(
                       group["name"],
-                      style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+                      style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -420,8 +423,8 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
                           ? 'bookmark'
                           : 'bookmark_border',
                       color: group["isBookmarked"]
-                          ? AppTheme.lightTheme.colorScheme.primary
-                          : AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
                       size: 24,
                     ),
                   ),
@@ -435,13 +438,13 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
                     children: [
                       Text(
                         'Description',
-                        style: AppTheme.lightTheme.textTheme.titleMedium
+                        style: theme.textTheme.titleMedium
                             ?.copyWith(fontWeight: FontWeight.w600),
                       ),
                       SizedBox(height: 1.h),
                       Text(
                         group["description"],
-                        style: AppTheme.lightTheme.textTheme.bodyMedium,
+                        style: theme.textTheme.bodyMedium,
                       ),
                       SizedBox(height: 2.h),
                       _buildDetailRow(
@@ -501,6 +504,7 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
   }
 
   Widget _buildDetailRow(String label, String value) {
+    final theme = Theme.of(context);
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 0.5.h),
       child: Row(
@@ -510,15 +514,15 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
             width: 35.w,
             child: Text(
               label,
-              style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                color: AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
+              style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -529,13 +533,14 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
   }
 
   void _showJoinDialog(Map<String, dynamic> group) {
+    final theme = Theme.of(context);
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(
             'Join Equb Group',
-            style: AppTheme.lightTheme.textTheme.titleLarge,
+            style: theme.textTheme.titleLarge,
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -543,21 +548,21 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
             children: [
               Text(
                 'You are requesting to join:',
-                style: AppTheme.lightTheme.textTheme.bodyMedium,
+                style: theme.textTheme.bodyMedium,
               ),
               SizedBox(height: 1.h),
               Text(
                 group["name"],
-                style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+                style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.lightTheme.colorScheme.primary,
+                  color: theme.colorScheme.primary,
                 ),
               ),
               SizedBox(height: 2.h),
               Container(
                 padding: EdgeInsets.all(3.w),
                 decoration: BoxDecoration(
-                  color: AppTheme.lightTheme.colorScheme.primaryContainer,
+                  color: theme.colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
@@ -598,7 +603,7 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Join request sent to ${group["adminName"]}'),
-                    backgroundColor: AppTheme.getSuccessColor(true),
+                    backgroundColor: AppTheme.getSuccessColorFromContext(context),
                   ),
                 );
               },
@@ -612,14 +617,16 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
-      backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
+        backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         title: Text(
           'Browse Equb Groups',
-          style: AppTheme.lightTheme.textTheme.titleLarge?.copyWith(
+          style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -676,7 +683,7 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
                     icon: Container(
                       padding: EdgeInsets.all(2.w),
                       decoration: BoxDecoration(
-                        color: AppTheme.lightTheme.colorScheme.primary,
+                        color: theme.colorScheme.primary,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: CustomIconWidget(
@@ -708,7 +715,7 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
           Expanded(
             child: RefreshIndicator(
               onRefresh: _handleRefresh,
-              color: AppTheme.lightTheme.colorScheme.primary,
+              color: theme.colorScheme.primary,
               child: _filteredGroups.isEmpty
                   ? EmptyBrowseState()
                   : ListView.builder(

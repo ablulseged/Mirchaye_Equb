@@ -31,7 +31,7 @@ class EmptyStateWidget extends StatelessWidget {
               width: 30.w,
               height: 30.w,
               decoration: BoxDecoration(
-                color: AppTheme.lightTheme.colorScheme.primary.withValues(
+                color: Theme.of(context).colorScheme.primary.withValues(
                   alpha: 0.1,
                 ),
                 shape: BoxShape.circle,
@@ -39,7 +39,7 @@ class EmptyStateWidget extends StatelessWidget {
               child: Center(
                 child: CustomIconWidget(
                   iconName: iconName,
-                  color: AppTheme.lightTheme.colorScheme.primary,
+                  color: Theme.of(context).colorScheme.primary,
                   size: 15.w,
                 ),
               ),
@@ -47,17 +47,17 @@ class EmptyStateWidget extends StatelessWidget {
             SizedBox(height: 4.h),
             Text(
               title,
-              style: AppTheme.lightTheme.textTheme.headlineSmall?.copyWith(
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: AppTheme.lightTheme.colorScheme.onSurface,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 2.h),
             Text(
               description,
-              style: AppTheme.lightTheme.textTheme.bodyMedium?.copyWith(
-                color: AppTheme.lightTheme.colorScheme.onSurface.withValues(
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withValues(
                   alpha: 0.7,
                 ),
                 height: 1.5,
@@ -71,13 +71,13 @@ class EmptyStateWidget extends StatelessWidget {
                 onPressed: onButtonPressed,
                 icon: CustomIconWidget(
                   iconName: 'add',
-                  color: AppTheme.lightTheme.colorScheme.onPrimary,
+                  color: Theme.of(context).colorScheme.onPrimary,
                   size: 20,
                 ),
                 label: Text(
                   buttonText,
-                  style: AppTheme.lightTheme.textTheme.labelLarge?.copyWith(
-                    color: AppTheme.lightTheme.colorScheme.onPrimary,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onPrimary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),

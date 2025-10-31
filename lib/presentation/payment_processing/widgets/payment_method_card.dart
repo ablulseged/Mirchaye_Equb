@@ -32,12 +32,12 @@ class PaymentMethodCard extends StatelessWidget {
         padding: EdgeInsets.all(4.w),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppTheme.lightTheme.colorScheme.primaryContainer
-              : AppTheme.lightTheme.cardColor,
+              ? Theme.of(context).colorScheme.primaryContainer
+              : Theme.of(context).cardColor,
           border: Border.all(
             color: isSelected
-                ? AppTheme.lightTheme.colorScheme.primary
-                : AppTheme.lightTheme.colorScheme.outline,
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.outline,
             width: isSelected ? 2.0 : 1.0,
           ),
           borderRadius: BorderRadius.circular(12.0),
@@ -49,18 +49,18 @@ class PaymentMethodCard extends StatelessWidget {
               height: 12.w,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppTheme.lightTheme.colorScheme.primary.withValues(
+                    ? Theme.of(context).colorScheme.primary.withValues(
                         alpha: 0.1,
                       )
-                    : AppTheme.lightTheme.colorScheme.surfaceContainerHighest,
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(8.0),
               ),
               child: Center(
                 child: CustomIconWidget(
                   iconName: iconName,
                   color: isSelected
-                      ? AppTheme.lightTheme.colorScheme.primary
-                      : AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
                   size: 24,
                 ),
               ),
@@ -72,11 +72,11 @@ class PaymentMethodCard extends StatelessWidget {
                 children: [
                   Text(
                     methodName,
-                    style: AppTheme.lightTheme.textTheme.titleMedium?.copyWith(
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: isEnabled
-                          ? AppTheme.lightTheme.colorScheme.onSurface
-                          : AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                          ? Theme.of(context).colorScheme.onSurface
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   SizedBox(height: 1.h),
@@ -85,7 +85,7 @@ class PaymentMethodCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           processingTime,
-                          style: AppTheme.lightTheme.textTheme.bodyMedium
+                          style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(
                                 color: AppTheme
                                     .lightTheme
@@ -96,11 +96,11 @@ class PaymentMethodCard extends StatelessWidget {
                       ),
                       Text(
                         fee,
-                        style: AppTheme.lightTheme.textTheme.bodyMedium
+                        style: Theme.of(context).textTheme.bodyMedium
                             ?.copyWith(
                               fontWeight: FontWeight.w500,
                               color: fee == 'Free'
-                                  ? AppTheme.getSuccessColor(true)
+                                  ? AppTheme.getSuccessColorFromContext(context)
                                   : AppTheme
                                         .lightTheme
                                         .colorScheme
@@ -117,7 +117,7 @@ class PaymentMethodCard extends StatelessWidget {
                 margin: EdgeInsets.only(left: 2.w),
                 child: CustomIconWidget(
                   iconName: 'check_circle',
-                  color: AppTheme.lightTheme.colorScheme.primary,
+                  color: Theme.of(context).colorScheme.primary,
                   size: 20,
                 ),
               ),

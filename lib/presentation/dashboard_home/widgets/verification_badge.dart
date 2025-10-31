@@ -19,12 +19,12 @@ class VerificationBadge extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.h),
       decoration: BoxDecoration(
         color: isVerified
-            ? AppTheme.getSuccessColor(true).withValues(alpha: 0.1)
+            ? AppTheme.getSuccessColorFromContext(context).withValues(alpha: 0.1)
             : AppTheme.getWarningColor(true).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isVerified
-              ? AppTheme.getSuccessColor(true)
+              ? AppTheme.getSuccessColorFromContext(context)
               : AppTheme.getWarningColor(true),
           width: 1,
         ),
@@ -35,7 +35,7 @@ class VerificationBadge extends StatelessWidget {
           CustomIconWidget(
             iconName: isVerified ? 'verified' : 'pending',
             color: isVerified
-                ? AppTheme.getSuccessColor(true)
+                ? AppTheme.getSuccessColorFromContext(context)
                 : AppTheme.getWarningColor(true),
             size: 16,
           ),
@@ -43,9 +43,9 @@ class VerificationBadge extends StatelessWidget {
           Flexible(
             child: Text(
               isVerified ? '$universityName Verified' : 'Verification Pending',
-              style: AppTheme.lightTheme.textTheme.bodySmall?.copyWith(
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: isVerified
-                    ? AppTheme.getSuccessColor(true)
+                    ? AppTheme.getSuccessColorFromContext(context)
                     : AppTheme.getWarningColor(true),
                 fontWeight: FontWeight.w600,
               ),
