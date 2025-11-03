@@ -42,9 +42,25 @@ class GroupCard extends StatelessWidget {
             // Header with admin info and favorite button
             Row(
               children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundImage: NetworkImage(group["adminAvatar"]),
+                GestureDetector(
+                  onTap: () {
+                    if (group["ownerUid"] != null) {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.userProfile,
+                        arguments: {'userId': group["ownerUid"]},
+                      );
+                    }
+                  },
+                  child: CircleAvatar(
+                    radius: 20,
+                    backgroundImage: (group["adminAvatar"] != null && group["adminAvatar"].toString().isNotEmpty)
+                        ? NetworkImage(group["adminAvatar"])
+                        : null,
+                    child: (group["adminAvatar"] == null || group["adminAvatar"].toString().isEmpty)
+                        ? Text((group["adminName"] ?? 'A').substring(0, 1).toUpperCase())
+                        : null,
+                  ),
                 ),
                 SizedBox(width: 3.w),
                 Expanded(
@@ -86,23 +102,6 @@ class GroupCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CustomIconWidget(
-                      iconName: 'star',
-                      color: Color(0xFFFFD700),
-                      size: 16,
-                    ),
-                    SizedBox(width: 1.w),
-                    Text(
-                      '${group["trustRating"]}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
                 ),
                 SizedBox(width: 2.w),
                 GestureDetector(

@@ -27,19 +27,12 @@ class QuickActionButton extends StatelessWidget {
         height: 12.h,
         margin: EdgeInsets.symmetric(horizontal: 1.w),
         decoration: BoxDecoration(
-          color: isEnabled
-              ? theme.colorScheme.primary
-              : theme.colorScheme.outline.withAlpha(77),
+          color: theme.colorScheme.primaryContainer,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: isEnabled
-              ? [
-                  BoxShadow(
-                    color: theme.colorScheme.primary.withAlpha(77),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
+          border: Border.all(
+            color: theme.colorScheme.outline.withValues(alpha: 0.3),
+            width: 1,
+          ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -47,7 +40,7 @@ class QuickActionButton extends StatelessWidget {
             CustomIconWidget(
               iconName: iconName,
               color: isEnabled
-                  ? Colors.white
+                  ? theme.colorScheme.primary
                   : theme.colorScheme.onSurfaceVariant,
               size: 24,
             ),
@@ -56,7 +49,7 @@ class QuickActionButton extends StatelessWidget {
               title,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: isEnabled
-                    ? Colors.white
+                    ? theme.colorScheme.primary
                     : theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
               ),

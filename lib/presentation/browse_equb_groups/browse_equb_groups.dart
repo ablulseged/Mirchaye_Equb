@@ -6,6 +6,7 @@ import './widgets/category_tab_widget.dart';
 import './widgets/empty_browse_state.dart';
 import './widgets/filter_chip_widget.dart';
 import './widgets/group_card.dart';
+import '../../services/equb_service.dart';
 import './widgets/search_bar_widget.dart';
 
 class BrowseEqubGroups extends StatefulWidget {
@@ -41,7 +42,7 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
     '12+ months',
   ];
 
-  final List<String> locations = ['All', 'IS', 'Software Engineering', 'IT'];
+  final List<String> locations = ['All', 'Addis Ababa', 'Hawassa', 'Bahir Dar'];
 
   final List<String> groupSizes = [
     'All',
@@ -50,92 +51,12 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
     '15+ members',
   ];
 
-  // Mock equb groups data
-  final List<Map<String, dynamic>> allGroups = [
-    {
-      "id": 1,
-      "name": "Computer Science Students Equb",
-      "contributionAmount": "4,500.00",
-      "duration": "12 months",
-      "currentMembers": 8,
-      "maxMembers": 12,
-      "adminName": "Almaz Tadesse",
-      "adminAvatar":
-          "https://images.unsplash.com/photo-1644128283874-ed27887734ec",
-      "university": "Wachemo University",
-      "trustRating": 4.8,
-      "category": "student",
-      "description":
-          "Monthly savings group for CS students to support academic expenses",
-      "nextCycleStart": "2025-11-01",
-      "paymentFrequency": "Monthly",
-      "isBookmarked": false,
-    },
-    {
-      "id": 2,
-      "name": "Dormitory Block A Equb",
-      "contributionAmount": "2,000.00",
-      "duration": "6 months",
-      "currentMembers": 6,
-      "maxMembers": 8,
-      "adminName": "Dawit Haile",
-      "adminAvatar":
-          "https://images.unsplash.com/photo-1659430752005-6ea1ba732745",
-      "university": "Wachemo University",
-      "trustRating": 4.5,
-      "category": "student",
-      "description":
-          "Dormitory residents saving for room improvements and events",
-      "nextCycleStart": "2025-10-30",
-      "paymentFrequency": "Monthly",
-      "isBookmarked": true,
-    },
-    {
-      "id": 3,
-      "name": "Women Entrepreneurs Network",
-      "contributionAmount": "8,000.00",
-      "duration": "18 months",
-      "currentMembers": 12,
-      "maxMembers": 15,
-      "adminName": "Hanan Mohammed",
-      "adminAvatar":
-          "https://images.unsplash.com/photo-1496725288175-64caa3b2e9f6",
-      "university": "WCU University",
-      "trustRating": 4.9,
-      "category": "professional",
-      "description":
-          "Professional network for women entrepreneurs and business owners",
-      "nextCycleStart": "2025-11-15",
-      "paymentFrequency": "Monthly",
-      "isBookmarked": false,
-    },
-    {
-      "id": 4,
-      "name": "Community Health Initiative",
-      "contributionAmount": "1,500.00",
-      "duration": "9 months",
-      "currentMembers": 10,
-      "maxMembers": 20,
-      "adminName": "Dr. Kebede Assefa",
-      "adminAvatar":
-          "https://images.unsplash.com/photo-1727782383174-c498f69acc5c",
-      "university": "WCU University",
-      "trustRating": 4.7,
-      "category": "community",
-      "description":
-          "Community-focused group supporting local health initiatives",
-      "nextCycleStart": "2025-12-01",
-      "paymentFrequency": "Monthly",
-      "isBookmarked": false,
-    },
-  ];
-
-  final List<String> _favoriteGroups = [];
+  final EqubService _equbService = EqubService();
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -144,18 +65,16 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
     super.dispose();
   }
 
-  List<Map<String, dynamic>> get _filteredGroups {
-    List<Map<String, dynamic>> filtered = allGroups;
+  List<Map<String, dynamic>> _applyFilters(List<Map<String, dynamic>> input) {
+    List<Map<String, dynamic>> filtered = input;
 
     // Filter by search query
     if (_searchQuery.isNotEmpty) {
       filtered = filtered.where((group) {
-        return group["name"].toLowerCase().contains(
-              _searchQuery.toLowerCase(),
-            ) ||
-            group["university"].toLowerCase().contains(
-              _searchQuery.toLowerCase(),
-            );
+        final name = (group["name"] ?? '').toString().toLowerCase();
+        final university = (group["university"] ?? '').toString().toLowerCase();
+        final query = _searchQuery.toLowerCase();
+        return name.contains(query) || university.contains(query);
       }).toList();
     }
 
@@ -163,12 +82,15 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
     String categoryFilter = '';
     switch (_tabController.index) {
       case 0:
-        categoryFilter = 'student';
+        categoryFilter = 'friends';
         break;
       case 1:
-        categoryFilter = 'professional';
+        categoryFilter = 'family';
         break;
       case 2:
+        categoryFilter = 'workplaces';
+        break;
+      case 3:
         categoryFilter = 'community';
         break;
     }
@@ -240,12 +162,15 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
   }
 
   Future<void> _handleRefresh() async {
+    if (!mounted) return;
     setState(() => _isRefreshing = true);
     await Future.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
     setState(() => _isRefreshing = false);
   }
 
   void _onSearchChanged(String query) {
+    if (!mounted) return;
     setState(() => _searchQuery = query);
   }
 
@@ -310,7 +235,7 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
                                 setModalState(() => _selectedDuration = value),
                           ),
                           _buildFilterSection(
-                            'Department',
+                            'Category',
                             locations,
                             _selectedLocation,
                             (value) =>
@@ -381,14 +306,7 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
     );
   }
 
-  void _toggleFavorite(int groupId) {
-    setState(() {
-      final index = allGroups.indexWhere((group) => group["id"] == groupId);
-      if (index != -1) {
-        allGroups[index]["isBookmarked"] = !allGroups[index]["isBookmarked"];
-      }
-    });
-  }
+  void _toggleFavorite(String groupId) {}
 
   void _showGroupDetails(Map<String, dynamic> group) {
     final theme = Theme.of(context);
@@ -464,10 +382,6 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
                         'Current Members',
                         '${group["currentMembers"]}/${group["maxMembers"]}',
                       ),
-                      _buildDetailRow(
-                        'Trust Rating',
-                        '${group["trustRating"]}/5.0',
-                      ),
                       _buildDetailRow('University', group["university"]),
                       _buildDetailRow('Admin', group["adminName"]),
                     ],
@@ -534,6 +448,7 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
 
   void _showJoinDialog(Map<String, dynamic> group) {
     final theme = Theme.of(context);
+    final parentContext = context;
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -598,14 +513,33 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
               child: Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
+                // Close the dialog first
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Join request sent to ${group["adminName"]}'),
-                    backgroundColor: AppTheme.getSuccessColorFromContext(context),
-                  ),
+                // Show a loading overlay while sending request
+                showDialog(
+                  context: parentContext,
+                  barrierDismissible: false,
+                  builder: (_) => const Center(child: CircularProgressIndicator()),
                 );
+                try {
+                  await _equbService.requestToJoin(equbId: group['id']);
+                  Navigator.of(parentContext, rootNavigator: true).pop();
+                  ScaffoldMessenger.of(parentContext).showSnackBar(
+                    SnackBar(
+                      content: Text('Request sent to ${group["adminName"]}'),
+                      backgroundColor: AppTheme.getSuccessColorFromContext(parentContext),
+                    ),
+                  );
+                } catch (e) {
+                  Navigator.of(parentContext, rootNavigator: true).pop();
+                  ScaffoldMessenger.of(parentContext).showSnackBar(
+                    SnackBar(
+                      content: Text('Request not sent: ${e.toString()}'),
+                      backgroundColor: Theme.of(parentContext).colorScheme.error,
+                    ),
+                  );
+                }
               },
               child: Text('Send Request'),
             ),
@@ -704,8 +638,9 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
               controller: _tabController,
               onTap: (index) => setState(() {}),
               tabs: [
-                CategoryTabWidget(title: 'Student Groups'),
-                CategoryTabWidget(title: 'Professional'),
+                CategoryTabWidget(title: 'Friends'),
+                CategoryTabWidget(title: 'Family'),
+                CategoryTabWidget(title: 'Workplaces'),
                 CategoryTabWidget(title: 'Community'),
               ],
             ),
@@ -713,23 +648,81 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
 
           // Groups List
           Expanded(
-            child: RefreshIndicator(
-              onRefresh: _handleRefresh,
-              color: theme.colorScheme.primary,
-              child: _filteredGroups.isEmpty
-                  ? EmptyBrowseState()
-                  : ListView.builder(
-                      padding: EdgeInsets.symmetric(vertical: 1.h),
-                      itemCount: _filteredGroups.length,
-                      itemBuilder: (context, index) {
-                        final group = _filteredGroups[index];
-                        return GroupCard(
-                          group: group,
-                          onTap: () => _showGroupDetails(group),
-                          onFavorite: () => _toggleFavorite(group["id"]),
-                        );
-                      },
-                    ),
+            child: StreamBuilder(
+              stream: _equbService.streamPublicEqubs(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return EmptyBrowseState();
+                }
+
+                final docs = snapshot.data!.docs;
+                // Map Firestore docs to UI group maps
+                final List<Map<String, dynamic>> allGroups = docs.map((doc) {
+                  final data = doc.data();
+                  // Normalize category to one of new tabs so items appear
+                  final rawCategory = (data['category'] ?? '').toString().toLowerCase();
+                  final normalizedCategory =
+                      (rawCategory == 'friends' || rawCategory == 'family' || rawCategory == 'workplaces' || rawCategory == 'community')
+                          ? rawCategory
+                          : 'community';
+                  return {
+                    'id': doc.id,
+                    'name': data['name'] ?? 'Untitled Equb',
+                    'description': data['description'] ?? '',
+                    'contributionAmount': (data['contributionAmount'] is num)
+                        ? (data['contributionAmount'] as num).toStringAsFixed(2)
+                        : (data['contributionAmount']?.toString() ?? '0'),
+                    'duration': data['paymentFrequency'] ?? 'Monthly',
+                    'currentMembers': data['currentMembers'] ?? 0,
+                    'maxMembers': data['maxMembers'] ?? 0,
+                    'adminName': data['ownerEmail'] ?? 'Admin',
+                    'ownerUid': data['ownerUid'],
+                    'adminAvatar': data['ownerPhotoUrl'] ?? data['coverImageUrl'] ??
+                        'https://i.pravatar.cc/150?u=${data['ownerEmail'] ?? 'fallback'}',
+                    // Keep using "university" key for display/search, but show category label
+                    'university': (data['category'] ?? '-').toString(),
+                    'category': normalizedCategory,
+                    'nextCycleStart': (data['startDate'] != null)
+                        ? (data['startDate']).toDate().toString().split(' ').first
+                        : '-',
+                    'paymentFrequency': data['paymentFrequency'] ?? 'Monthly',
+                    'isBookmarked': false,
+                    'createdAtTs': (data['createdAt'] != null) ? data['createdAt'].toDate() : null,
+                  };
+                }).toList();
+
+                // Client-side sort by createdAt desc if present
+                allGroups.sort((a, b) {
+                  final DateTime? aTs = a['createdAtTs'] as DateTime?;
+                  final DateTime? bTs = b['createdAtTs'] as DateTime?;
+                  if (aTs == null && bTs == null) return 0;
+                  if (aTs == null) return 1;
+                  if (bTs == null) return -1;
+                  return bTs.compareTo(aTs);
+                });
+
+                final filtered = _applyFilters(allGroups);
+
+                return RefreshIndicator(
+                  onRefresh: _handleRefresh,
+                  color: theme.colorScheme.primary,
+                  child: ListView.builder(
+                    padding: EdgeInsets.symmetric(vertical: 1.h),
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) {
+                      final group = filtered[index];
+                      return GroupCard(
+                        group: group,
+                        onTap: () => _showGroupDetails(group),
+                        onFavorite: () => _toggleFavorite(group['id']),
+                      );
+                    },
+                  ),
+                );
+              },
             ),
           ),
         ],

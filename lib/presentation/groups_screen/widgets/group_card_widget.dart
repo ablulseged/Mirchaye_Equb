@@ -157,7 +157,16 @@ class GroupCardWidget extends StatelessWidget {
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () => _showMemberManagement(context),
+                          onPressed: () {
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.groupManagement,
+                              arguments: {
+                                'equbId': groupData['id'],
+                                'isOwner': true,
+                              },
+                            );
+                          },
                           icon: CustomIconWidget(
                             iconName: 'people',
                             color: Theme.of(context).colorScheme.primary,
@@ -183,7 +192,10 @@ class GroupCardWidget extends StatelessWidget {
                       SizedBox(width: 2.w),
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: () => _showGroupDetails(context),
+                          onPressed: () {
+                            // Call onTap callback which shows details dialog
+                            onTap?.call();
+                          },
                           icon: CustomIconWidget(
                             iconName: 'visibility',
                             color: Theme.of(context).colorScheme.onPrimary,

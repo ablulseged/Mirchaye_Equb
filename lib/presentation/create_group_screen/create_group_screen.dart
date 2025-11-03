@@ -3,6 +3,9 @@ import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
 import '../../widgets/custom_icon_widget.dart';
+import '../../services/equb_service.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import './widgets/advanced_settings_widget.dart';
 import './widgets/financial_config_widget.dart';
 import './widgets/group_basics_widget.dart';
@@ -20,6 +23,7 @@ class CreateGroupScreen extends StatefulWidget {
 
 class _CreateGroupScreenState extends State<CreateGroupScreen>
     with TickerProviderStateMixin {
+  static const int MAX_OWNED_EQUBS = 2;
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final PageController _pageController = PageController();
   late TabController _tabController;
@@ -509,8 +513,34 @@ class _CreateGroupScreenState extends State<CreateGroupScreen>
     });
 
     try {
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 2));
+      // Enforce owned equb limit
+      final ownedCount = await EqubService().countOwnedEqubsByCurrentUser();
+      if (ownedCount >= MAX_OWNED_EQUBS) {
+        final allowed = await _promptReauth();
+        if (!allowed) {
+          if (mounted) {
+            _showErrorMessage('Creation limited to $MAX_OWNED_EQUBS Equbs per user.');
+          }
+          return;
+        }
+      }
+
+      await EqubService().createEqubGroup(
+        name: _nameController.text.trim(),
+        description: _descriptionController.text.trim(),
+        category: _selectedCategory,
+        contributionAmount: _contributionAmount,
+        paymentFrequency: _paymentFrequency,
+        groupSize: _groupSize,
+        startDate: _selectedDate,
+        latePenaltyPercentage: _latePenaltyPercentage,
+        emergencyFundPercentage: _emergencyFundPercentage,
+        allowEarlyExit: _allowEarlyExit,
+        isPublic: _isPublic,
+        requireApproval: _requireApproval,
+        invitedMemberEmails:
+            _invitedMembers.map((m) => m['email'] as String).toList(),
+      );
 
       // Show success message with haptic feedback
       if (mounted) {
@@ -537,7 +567,11 @@ class _CreateGroupScreenState extends State<CreateGroupScreen>
       }
     } catch (e) {
       if (mounted) {
-        _showErrorMessage('Failed to create group. Please try again.');
+        if (e is FirebaseException) {
+          _showErrorMessage(e.message ?? 'Failed to create group. Check Firestore rules and auth.');
+        } else {
+          _showErrorMessage('Failed to create group: ${e.toString()}');
+        }
       }
     } finally {
       if (mounted) {
@@ -545,6 +579,57 @@ class _CreateGroupScreenState extends State<CreateGroupScreen>
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<bool> _promptReauth() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.email == null) return false;
+    String password = '';
+    final theme = Theme.of(context);
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Verify Identity', style: theme.textTheme.titleLarge),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('You already created $MAX_OWNED_EQUBS Equbs. Enter password to proceed.'),
+              SizedBox(height: 12),
+              Text('Email: ${user.email}'),
+              SizedBox(height: 8),
+              TextField(
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Password'),
+                onChanged: (v) => password = v,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Verify'),
+            ),
+          ],
+        );
+      },
+    );
+    if (result != true) return false;
+    try {
+      final cred = EmailAuthProvider.credential(email: user.email!, password: password);
+      await user.reauthenticateWithCredential(cred);
+      return true;
+    } catch (_) {
+      if (mounted) {
+        _showErrorMessage('Reauthentication failed. Please try again.');
+      }
+      return false;
     }
   }
 }

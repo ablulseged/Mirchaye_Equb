@@ -1,5 +1,7 @@
-package com.example.robot
+package com.example.my_app
 
 import io.flutter.embedding.android.FlutterActivity
 
 class MainActivity : FlutterActivity()
+
+

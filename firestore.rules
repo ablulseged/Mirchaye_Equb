@@ -1,0 +1,123 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // ============================================
+    // USER DATA
+    // ============================================
+    
+    // User document read/write
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+      
+      // User notifications subcollection
+      match /notifications/{notificationId} {
+        // Anyone authenticated can read their own notifications
+        allow read: if isAuthenticated() && request.auth.uid == userId;
+        
+        // Only authenticated users can create notifications for themselves or others
+        allow create: if isAuthenticated();
+        
+        // Only notification owner can update/delete
+        allow update: if isAuthenticated() && request.auth.uid == userId;
+        allow delete: if isAuthenticated() && request.auth.uid == userId;
+      }
+      
+      // User payments subcollection
+      match /payments/{paymentId} {
+        allow read: if isAuthenticated() && request.auth.uid == userId;
+        allow create: if isAuthenticated();
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+    }
+    
+    // ============================================
+    // EQUBS (GROUPS)
+    // ============================================
+    
+    // Notification requests (for Cloud Functions to process)
+    match /notification_requests/{requestId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /equbs/{equbId} {
+      // Anyone authenticated can read public equbs
+      allow read: if isAuthenticated();
+      
+      // Only authenticated users can create equbs
+      allow create: if isAuthenticated();
+      
+      // Only equb owner can update
+      allow update: if isAuthenticated() 
+        && resource.data.ownerUid == request.auth.uid;
+      
+      // Only equb owner can delete
+      allow delete: if isAuthenticated() 
+        && resource.data.ownerUid == request.auth.uid;
+      
+      // EQUB MEMBERS
+      match /members/{memberId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated();
+        allow delete: if isAuthenticated();
+      }
+      
+      // EQUB PAYMENTS
+      match /payments/{paymentId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated();
+        allow delete: if isAuthenticated();
+      }
+      
+      // EQUB ANNOUNCEMENTS
+      match /announcements/{announcementId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated();
+        allow delete: if isAuthenticated();
+      }
+      
+      // EQUB JOIN REQUESTS
+      match /joinRequests/{requestId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated();
+        allow delete: if isAuthenticated();
+      }
+      
+      // EQUB SPINS
+      match /spins/{spinId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated();
+        allow delete: if isAuthenticated();
+      }
+      
+      // EQUB INVITES
+      match /invites/{inviteId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated();
+        allow delete: if isAuthenticated();
+      }
+    }
+  }
+}
+

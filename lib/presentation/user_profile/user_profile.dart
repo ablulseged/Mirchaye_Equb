@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/app_export.dart';
 import './widgets/profile_completion_bar.dart';
 import './widgets/profile_section_card.dart';
 import '../../appearance_section_widget.dart';
 import '../../locale_provider.dart';
 import '../../l10n/app_localizations.dart';
-import '../login_screen/login_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/auth_service.dart';
+import '../../services/user_service.dart';
+import '../../services/cloudinary_service.dart';
 
 class UserProfile extends StatefulWidget {
-  const UserProfile({Key? key}) : super(key: key);
+  final String? userId;
+  const UserProfile({Key? key, this.userId}) : super(key: key);
 
   @override
   State<UserProfile> createState() => _UserProfileState();
@@ -24,8 +28,14 @@ class _UserProfileState extends State<UserProfile> {
   bool _notificationsEnabled = true;
   bool _paymentReminders = true;
   bool showAppearance = false;
+  final _userService = UserService();
+  final _auth = FirebaseAuth.instance;
+  final ImagePicker _imagePicker = ImagePicker();
+  bool _isUploading = false;
+  bool get _isViewingOwnProfile => widget.userId == null;
+  bool get _isCurrentUserOwner => _isViewingOwnProfile || widget.userId == _auth.currentUser?.uid;
   // Mock user profile data
-  final Map<String, dynamic> userProfile = {
+  Map<String, dynamic> userProfile = {
     "id": 1,
     "name": "Abebe Kebede",
     "phone": "+251912345678",
@@ -76,6 +86,8 @@ class _UserProfileState extends State<UserProfile> {
     });
   }
 
+  
+
   void _showImagePicker() {
     final l10n = AppLocalizations.of(context);
     showModalBottomSheet(
@@ -104,13 +116,7 @@ class _UserProfileState extends State<UserProfile> {
                     title: l10n?.edit ?? 'Camera',
                     onTap: () {
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            l10n?.edit ?? 'Camera feature coming soon!',
-                          ),
-                        ),
-                      );
+                      _pickImageFromCamera();
                     },
                   ),
                   _buildImageOption(
@@ -118,13 +124,7 @@ class _UserProfileState extends State<UserProfile> {
                     title: l10n?.edit ?? 'Gallery',
                     onTap: () {
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            l10n?.edit ?? 'Gallery feature coming soon!',
-                          ),
-                        ),
-                      );
+                      _pickImageFromGallery();
                     },
                   ),
                 ],
@@ -135,6 +135,115 @@ class _UserProfileState extends State<UserProfile> {
         );
       },
     );
+  }
+
+  Future<void> _pickImageFromCamera() async {
+    try {
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+      
+      if (pickedFile != null) {
+        await _uploadImageToCloudinary(pickedFile.path);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error picking image: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _pickImageFromGallery() async {
+    try {
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
+      
+      if (pickedFile != null) {
+        await _uploadImageToCloudinary(pickedFile.path);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error picking image: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _uploadImageToCloudinary(String filePath) async {
+    setState(() {
+      _isUploading = true;
+    });
+
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      final userId = _auth.currentUser?.uid ?? 'unknown';
+      
+      // Upload to Cloudinary
+      final imageUrl = await CloudinaryService.uploadImage(
+        filePath: filePath,
+        publicId: 'profile_$userId',
+      );
+
+      // Update Firestore
+      await _userService.updatePhotoUrl(imageUrl);
+
+      // Update local state
+      setState(() {
+        userProfile['avatarUrl'] = imageUrl;
+      });
+
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile photo updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error uploading image: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+        });
+      }
+    }
   }
 
   Widget _buildImageOption({
@@ -327,18 +436,41 @@ class _UserProfileState extends State<UserProfile> {
         ),
         centerTitle: true,
         actions: [
-          IconButton(
-            onPressed: _toggleEditMode,
-            icon: CustomIconWidget(
-              iconName: _isEditMode ? 'check' : 'edit',
-              color: theme.colorScheme.primary,
-              size: 24,
+          if (_isViewingOwnProfile)
+            IconButton(
+              onPressed: _toggleEditMode,
+              icon: CustomIconWidget(
+                iconName: _isEditMode ? 'check' : 'edit',
+                color: theme.colorScheme.primary,
+                size: 24,
+              ),
             ),
-          ),
-          SizedBox(width: 2.w),
+          if (_isViewingOwnProfile)
+            SizedBox(width: 2.w),
         ],
       ),
-      body: SingleChildScrollView(
+      body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: widget.userId != null
+            ? _userService.streamUser(widget.userId!)
+            : _userService.streamCurrentUser(),
+        builder: (context, snapshot) {
+          if (snapshot.hasData && snapshot.data != null) {
+            final docData = snapshot.data!.data();
+            if (docData != null) {
+              userProfile["name"] = docData['displayName'] ?? userProfile["name"];
+              userProfile["phone"] = docData['phone'] ?? userProfile["phone"];
+              userProfile["email"] =
+                  docData['email'] ?? (widget.userId == null ? _auth.currentUser?.email : '') ?? userProfile["email"];
+              userProfile["avatarUrl"] =
+                  docData['photoUrl'] ?? userProfile["avatarUrl"];
+              userProfile["university"] =
+                  docData['university'] ?? userProfile["university"];
+              userProfile["studentId"] =
+                  docData['studentId'] ?? userProfile["studentId"];
+            }
+          }
+
+          return SingleChildScrollView(
         child: Column(
           children: [
             // Profile Header
@@ -352,9 +484,17 @@ class _UserProfileState extends State<UserProfile> {
                       children: [
                         CircleAvatar(
                           radius: 60,
-                          backgroundImage: NetworkImage(
-                            userProfile["avatarUrl"],
-                          ),
+                          backgroundImage: (userProfile["avatarUrl"] != null && 
+                              userProfile["avatarUrl"].toString().isNotEmpty)
+                              ? NetworkImage(userProfile["avatarUrl"])
+                              : null,
+                          child: (userProfile["avatarUrl"] == null || 
+                              userProfile["avatarUrl"].toString().isEmpty)
+                              ? Text((userProfile["name"] ?? 'U').substring(0, 1).toUpperCase(),
+                                  style: theme.textTheme.headlineLarge?.copyWith(
+                                    color: theme.colorScheme.onSurface,
+                                  ))
+                              : null,
                         ),
                         if (_isEditMode)
                           Positioned(
@@ -615,6 +755,7 @@ class _UserProfileState extends State<UserProfile> {
             ),
 
             // Logout Section
+            if (_isViewingOwnProfile)
             Container(
               margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
               width: double.infinity,
@@ -639,6 +780,8 @@ class _UserProfileState extends State<UserProfile> {
             SizedBox(height: 5.h),
           ],
         ),
+      );
+        },
       ),
     );
   }

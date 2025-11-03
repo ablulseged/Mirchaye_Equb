@@ -10,6 +10,7 @@ import 'locale_provider.dart';
 import 'l10n/app_localizations.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
+import 'services/messaging_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 void main() async {
@@ -31,6 +32,10 @@ void main() async {
   // Load allowed emails for signup
   final authService = AuthService();
   await authService.loadAllowedEmails();
+
+  // Initialize Firebase Cloud Messaging for push notifications
+  final messagingService = MessagingService();
+  await messagingService.initialize();
 
   bool _hasShownError = false;
 
@@ -102,15 +107,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
 
-    // Sign out user when app is paused or closed
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.detached) {
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser != null) {
-        print('🚪 App paused/closed - signing out user: ${currentUser.email}');
-        FirebaseAuth.instance.signOut();
-      }
-    }
+    // Note: Auto sign-out disabled for production
+    // Users should manually sign out if needed
   }
 
   /// Update system UI overlay (status bar + nav bar) based on theme
