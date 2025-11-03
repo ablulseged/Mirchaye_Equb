@@ -36,17 +36,17 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
     _checkOwnership();
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
   Future<void> _checkOwnership() async {
     final isOwner = await _equbService.isOwner(widget.equbId);
     setState(() {
       _isOwner = isOwner;
     });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   Future<void> _spin() async {
@@ -94,6 +94,10 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
             equbId: widget.equbId,
             winnerUid: winnerDoc.id,
             winnerData: winnerData,
+          );
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Winner: $name')),
           );
         }
       })
@@ -179,44 +183,44 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                           ],
                         ),
                       ),
-              const SizedBox(height: 24),
-              if (_isOwner)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: names.isEmpty || _isSpinning ? null : _spin,
-                      icon: const Icon(Icons.play_arrow),
-                      label: const Text('Spin'),
-                    ),
-                  ),
-                )
-              else
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Card(
-                    color: theme.colorScheme.surfaceVariant,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            color: theme.colorScheme.primary,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Only the group owner can spin the wheel',
-                              style: theme.textTheme.bodyMedium,
+                      const SizedBox(height: 24),
+                      if (_isOwner)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: names.isEmpty || _isSpinning ? null : _spin,
+                              icon: const Icon(Icons.play_arrow),
+                              label: const Text('Spin'),
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+                        )
+                      else
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Card(
+                            color: theme.colorScheme.surfaceVariant,
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      'Only the group owner can spin the wheel',
+                                      style: theme.textTheme.bodyMedium,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
               const SizedBox(height: 12),
               if (names.isEmpty)
                 Padding(
@@ -249,6 +253,7 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
           );
         },
       ),
+<<<<<<< HEAD
           // Winner announcement overlay
           if (_isSpinning)
             Container(
