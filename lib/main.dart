@@ -102,15 +102,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
 
-    // Sign out user when app is paused or closed
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.detached) {
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser != null) {
-        print('🚪 App paused/closed - signing out user: ${currentUser.email}');
-        FirebaseAuth.instance.signOut();
-      }
-    }
+    // Note: Auto sign-out disabled for production
+    // Users should manually sign out if needed
   }
 
   /// Update system UI overlay (status bar + nav bar) based on theme

@@ -7,6 +7,9 @@ import './widgets/empty_state_widget.dart';
 import './widgets/quick_action_button.dart';
 import './widgets/user_status_card.dart';
 import '../../l10n/app_localizations.dart';
+import '../../services/equb_service.dart';
+import '../../services/payment_service.dart';
+import '../../services/user_service.dart';
 
 class DashboardHome extends StatefulWidget {
   const DashboardHome({Key? key}) : super(key: key);
@@ -20,6 +23,7 @@ class _DashboardHomeState extends State<DashboardHome>
   int _selectedIndex = 0;
   bool _isRefreshing = false;
   late PageController _pageController;
+  final _userService = UserService();
 
   // Mock user data
   final Map<String, dynamic> userData = {
@@ -113,10 +117,12 @@ class _DashboardHomeState extends State<DashboardHome>
   }
 
   Future<void> _handleRefresh() async {
+    if (!mounted) return;
     setState(() {
       _isRefreshing = true;
     });
     await Future.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
     setState(() {
       _isRefreshing = false;
     });
@@ -149,7 +155,7 @@ class _DashboardHomeState extends State<DashboardHome>
   void _navigateToJoinEqub() =>
       Navigator.pushNamed(context, AppRoutes.browseEqubGroups);
   void _navigateToPaymentHistory() =>
-      Navigator.pushNamed(context, AppRoutes.paymentProcessing);
+      Navigator.pushNamed(context, AppRoutes.paymentHistory);
 
   void _navigateToEqubDetails(Map<String, dynamic> equb) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -172,28 +178,343 @@ class _DashboardHomeState extends State<DashboardHome>
   void _showNewPaymentDialog() {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    final rootContext = context;
+    String? selectedEqubId;
+    String? selectedEqubName;
+
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text(
+                l10n?.payment ?? 'New Payment',
+                style: theme.textTheme.titleLarge,
+              ),
+              content: SizedBox(
+                width: 400,
+                child: StreamBuilder(
+                  stream: EqubService().streamEqubsWhereMember(),
+                  builder: (context, memberSnap) {
+                    final memberDocs = (memberSnap.data as dynamic)?.docs ?? [];
+                    final memberGroups = memberDocs.map<Map<String, dynamic>>((doc) {
+                      final data = doc.data();
+                      return {
+                        'id': doc.id,
+                        'name': data['name'] ?? 'Untitled Equb',
+                      };
+                    }).toList();
+
+                    return StreamBuilder(
+                      stream: EqubService().streamOwnedEqubsByCurrentUser(),
+                      builder: (context, ownedSnap) {
+                        final ownedDocs = (ownedSnap.data as dynamic)?.docs ?? [];
+                        final ownedGroups = ownedDocs.map<Map<String, dynamic>>((doc) {
+                          final data = doc.data();
+                          return {
+                            'id': doc.id,
+                            'name': data['name'] ?? 'Untitled Equb',
+                          };
+                        }).toList();
+
+                        final merged = <String, Map<String, dynamic>>{};
+                        for (final g in [...memberGroups, ...ownedGroups]) {
+                          merged[g['id'] as String] = g;
+                        }
+                        final groups = merged.values.toList();
+
+                        if ((memberSnap.connectionState == ConnectionState.waiting) ||
+                            (ownedSnap.connectionState == ConnectionState.waiting)) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+
+                        if (groups.isEmpty) {
+                          // Fallback to scan membership in case rules/fields differ
+                          return StreamBuilder(
+                            stream: EqubService().streamJoinedEqubsByScan(),
+                            builder: (context, scanSnap) {
+                              final scanDocs = (scanSnap.data as List<dynamic>?) ?? [];
+                              final scanGroups = scanDocs.map<Map<String, dynamic>>((doc) {
+                                final data = doc.data();
+                                return {
+                                  'id': doc.id,
+                                  'name': data['name'] ?? 'Untitled Equb',
+                                };
+                              }).toList();
+
+                              if (scanSnap.connectionState == ConnectionState.waiting) {
+                                return const Center(child: CircularProgressIndicator());
+                              }
+
+                              if (scanGroups.isEmpty) {
+                                return Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'You have no joined groups yet.',
+                                      style: theme.textTheme.bodyMedium,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'Browse and join a group first to make a payment.',
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }
+
+                              return ConstrainedBox(
+                                constraints: const BoxConstraints(maxHeight: 320),
+                                child: ListView.separated(
+                                  shrinkWrap: true,
+                                  itemCount: scanGroups.length,
+                                  separatorBuilder: (_, __) => const Divider(height: 1),
+                                  itemBuilder: (context, index) {
+                                    final g = scanGroups[index];
+                                    return ListTile(
+                                      title: Text(g['name']?.toString() ?? 'Untitled Equb'),
+                                      trailing: const Icon(Icons.chevron_right),
+                                      onTap: () {
+                                        selectedEqubId = g['id'] as String?;
+                                        selectedEqubName = g['name']?.toString();
+                                        Navigator.of(dialogContext).pop();
+                                        showDialog(
+                                          context: rootContext,
+                                          builder: (methodContext) {
         return AlertDialog(
-          title: Text(l10n?.payment ?? 'New Payment', style: theme.textTheme.titleLarge),
-          content: Text(
+                                              title: Text(
+                                                'Select Payment Method',
+                                                style: theme.textTheme.titleLarge,
+                                              ),
+                                              content: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                                children: [
+                                                  ElevatedButton.icon(
+                                                    onPressed: () {
+                                                      Navigator.of(methodContext).pop();
+                                                      Navigator.pushNamed(
+                                                        rootContext,
+                                                        AppRoutes.paymentProcessing,
+                                                        arguments: {
+                                                          'equbId': selectedEqubId,
+                                                          'equbName': selectedEqubName,
+                                                          'method': 'Chapa',
+                                                          'chapaPublicKey': PaymentService.chapaPublicKey,
+                                                        },
+                                                      );
+                                                    },
+                                                    icon: const Icon(Icons.payment),
+                                                    label: const Text('Chapa'),
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  OutlinedButton.icon(
+                                                    onPressed: () {
+                                                      Navigator.of(methodContext).pop();
+                                                      Navigator.pushNamed(
+                                                        rootContext,
+                                                        AppRoutes.paymentProcessing,
+                                                        arguments: {
+                                                          'equbId': selectedEqubId,
+                                                          'equbName': selectedEqubName,
+                                                          'method': 'Screenshot',
+                                                        },
+                                                      );
+                                                    },
+                                                    icon: const Icon(Icons.image),
+                                                    label: const Text('Screenshot'),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          },
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
+                              );
+                            },
+                          );
+                        }
+
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
             l10n?.selectPaymentMethod ?? 'Select an Equb group to make a payment.',
             style: theme.textTheme.bodyMedium,
+                            ),
+                            const SizedBox(height: 16),
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxHeight: 320),
+                              child: ListView.separated(
+                                shrinkWrap: true,
+                                itemCount: groups.length,
+                                separatorBuilder: (_, __) => const Divider(height: 1),
+                                itemBuilder: (context, index) {
+                                  final g = groups[index];
+                                  return ListTile(
+                                    title: Text(g['name']?.toString() ?? 'Untitled Equb'),
+                                    trailing: const Icon(Icons.chevron_right),
+                                    onTap: () {
+                                      selectedEqubId = g['id'] as String?;
+                                      selectedEqubName = g['name']?.toString();
+                                      Navigator.of(dialogContext).pop();
+                                      showDialog(
+                                        context: rootContext,
+                                        builder: (methodContext) {
+                                          return AlertDialog(
+                                            title: Text(
+                                              'Select Payment Method',
+                                              style: theme.textTheme.titleLarge,
+                                            ),
+                                            content: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                                              children: [
+                                                ElevatedButton.icon(
+                                                  onPressed: () {
+                                                    Navigator.of(methodContext).pop();
+                                                    Navigator.pushNamed(
+                                                      rootContext,
+                                                      AppRoutes.paymentProcessing,
+                                                      arguments: {
+                                                        'equbId': selectedEqubId,
+                                                        'equbName': selectedEqubName,
+                                                        'method': 'Chapa',
+                                                        'chapaPublicKey': PaymentService.chapaPublicKey,
+                                                      },
+                                                    );
+                                                  },
+                                                  icon: const Icon(Icons.payment),
+                                                  label: const Text('Chapa'),
+                                                ),
+                                                const SizedBox(height: 8),
+                                                OutlinedButton.icon(
+                                                  onPressed: () {
+                                                    Navigator.of(methodContext).pop();
+                                                    Navigator.pushNamed(
+                                                      rootContext,
+                                                      AppRoutes.paymentProcessing,
+                                                      arguments: {
+                                                        'equbId': selectedEqubId,
+                                                        'equbName': selectedEqubName,
+                                                        'method': 'Screenshot',
+                                                      },
+                                                    );
+                                                  },
+                                                  icon: const Icon(Icons.image),
+                                                  label: const Text('Screenshot'),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(l10n?.cancel ?? 'Cancel', style: theme.textTheme.bodyMedium),
-            ),
-            ElevatedButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(
+                    l10n?.cancel ?? 'Cancel',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+                Builder(
+                  builder: (context) {
+                    return ElevatedButton(
+                      onPressed: () {
+                        if (selectedEqubId == null) {
+                          ScaffoldMessenger.of(rootContext).showSnackBar(
+                            SnackBar(
+                              content: const Text('Please select a group'),
+                              backgroundColor: theme.colorScheme.error,
+                            ),
+                          );
+                          return;
+                        }
+                        Navigator.of(dialogContext).pop();
+
+                        // Next: choose payment method (Chapa or Screenshot)
+                        showDialog(
+                          context: rootContext,
+                          builder: (methodContext) {
+                            return AlertDialog(
+                              title: Text(
+                                'Select Payment Method',
+                                style: theme.textTheme.titleLarge,
+                              ),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  ElevatedButton.icon(
+                                    onPressed: () {
+                                      Navigator.of(methodContext).pop();
+                                      Navigator.pushNamed(
+                                        rootContext,
+                                        AppRoutes.paymentProcessing,
+                                        arguments: {
+                                          'equbId': selectedEqubId,
+                                          'equbName': selectedEqubName,
+                                          'method': 'Chapa',
+                                          'chapaPublicKey': PaymentService.chapaPublicKey,
+                                        },
+                                      );
+                                    },
+                                    icon: const Icon(Icons.payment),
+                                    label: const Text('Chapa'),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  OutlinedButton.icon(
               onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.pushNamed(context, AppRoutes.paymentProcessing);
-              },
-              child: Text(l10n?.continueButton ?? 'Continue', style: theme.textTheme.bodyMedium),
-            ),
-          ],
+                                      Navigator.of(methodContext).pop();
+                                      Navigator.pushNamed(
+                                        rootContext,
+                                        AppRoutes.paymentProcessing,
+                                        arguments: {
+                                          'equbId': selectedEqubId,
+                                          'equbName': selectedEqubName,
+                                          'method': 'Screenshot',
+                                        },
+                                      );
+                                    },
+                                    icon: const Icon(Icons.image),
+                                    label: const Text('Screenshot'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                      child: Text(
+                        l10n?.continueButton ?? 'Continue',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -201,34 +522,92 @@ class _DashboardHomeState extends State<DashboardHome>
 
   Widget _buildEqubCards(ThemeData theme) {
     final l10n = AppLocalizations.of(context);
-    if (userEqubs.isEmpty)
-      return EmptyStateWidget(onCreateEqub: _navigateToCreateEqub);
+    final equbService = EqubService();
 
-    return SizedBox(
-      height: 20.h,
-      child: PageView.builder(
-        controller: _pageController,
-        itemCount: userEqubs.length,
-        itemBuilder: (context, index) {
-          final equb = userEqubs[index];
-          final progress =
-              (equb["currentRound"] as int) / (equb["totalRounds"] as int);
-          final isOwner = equb["type"] == "owner";
+    return StreamBuilder(
+      stream: equbService.streamOwnedEqubsByCurrentUser(),
+      builder: (context, ownedSnap) {
+        final ownedDocs = (ownedSnap.data as dynamic)?.docs ?? [];
+        final owned = ownedDocs.map<Map<String, dynamic>>((doc) {
+          final d = doc.data();
+          return {
+            'id': doc.id,
+            'name': d['name'] ?? 'Untitled Equb',
+            'contributionAmount': (d['contributionAmount'] is num)
+                ? (d['contributionAmount'] as num).toDouble()
+                : 0.0,
+            'currentMembers': d['currentMembers'] ?? 0,
+            'maxMembers': d['maxMembers'] ?? 0,
+            'isOwner': true,
+          };
+        }).toList();
 
-          return UserStatusCard(
-            title: equb["title"] as String,
-            subtitle: isOwner
-                ? "${l10n?.owner ?? 'Owner'} • ${equb["memberCount"]} ${l10n?.members ?? 'members'}"
-                : "${l10n?.members ?? 'Member'} • ${l10n?.round ?? 'Round'} ${equb["currentRound"]}/${equb["totalRounds"]}",
-            amount: "${equb["totalAmount"]} ${l10n?.etb ?? 'ETB'}",
-            progress: progress,
-            progressColor: isOwner
-                ? theme.colorScheme.primary
-                : AppTheme.getSuccessColorFromContext(context),
-            onTap: () => _navigateToEqubDetails(equb),
-          );
-        },
-      ),
+        return StreamBuilder(
+          stream: equbService.streamEqubsWhereMember(),
+          builder: (context, memberSnap) {
+            final memberDocs = (memberSnap.data as dynamic)?.docs ?? [];
+            final joined = memberDocs.map<Map<String, dynamic>>((doc) {
+              final d = doc.data();
+              return {
+                'id': doc.id,
+                'name': d['name'] ?? 'Untitled Equb',
+                'contributionAmount': (d['contributionAmount'] is num)
+                    ? (d['contributionAmount'] as num).toDouble()
+                    : 0.0,
+                'currentMembers': d['currentMembers'] ?? 0,
+                'maxMembers': d['maxMembers'] ?? 0,
+                'isOwner': false,
+              };
+            }).toList();
+
+            if (ownedSnap.connectionState == ConnectionState.waiting ||
+                memberSnap.connectionState == ConnectionState.waiting) {
+              return SizedBox(
+                height: 20.h,
+                child: const Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            final merged = <String, Map<String, dynamic>>{};
+            for (final g in [...owned, ...joined]) {
+              merged[g['id'] as String] = g;
+            }
+            final groups = merged.values.toList();
+
+            if (groups.isEmpty) {
+              return EmptyStateWidget(onCreateEqub: _navigateToCreateEqub);
+            }
+
+            return SizedBox(
+              height: 20.h,
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: groups.length,
+                itemBuilder: (context, index) {
+                  final g = groups[index];
+                  final current = (g['currentMembers'] as int?) ?? 0;
+                  final max = (g['maxMembers'] as int?) ?? 0;
+                  final progress = max > 0 ? (current / max).clamp(0.0, 1.0) : 0.0;
+                  final isOwner = (g['isOwner'] as bool?) ?? false;
+
+                  return UserStatusCard(
+                    title: g['name']?.toString() ?? 'Untitled Equb',
+                    subtitle: isOwner
+                        ? "${l10n?.owner ?? 'Owner'} • ${current}/${max} ${l10n?.members ?? 'members'}"
+                        : "${l10n?.members ?? 'Member'} • ${current}/${max} ${l10n?.members ?? 'members'}",
+                    amount: ((g['contributionAmount'] as double?) ?? 0.0).toStringAsFixed(2) + ' ' + (l10n?.etb ?? 'ETB'),
+                    progress: progress,
+                    progressColor: isOwner
+                        ? theme.colorScheme.primary
+                        : AppTheme.getSuccessColorFromContext(context),
+                    onTap: () => _navigateToEqubDetails(g),
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -321,6 +700,17 @@ class _DashboardHomeState extends State<DashboardHome>
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
 
+    return StreamBuilder(
+      stream: _userService.streamCurrentUser(),
+      builder: (context, snapshot) {
+        String? photoUrl;
+        if (snapshot.hasData && snapshot.data != null) {
+          final docData = snapshot.data!.data();
+          if (docData != null) {
+            photoUrl = docData['photoUrl'];
+          }
+        }
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -329,14 +719,10 @@ class _DashboardHomeState extends State<DashboardHome>
         titleSpacing: 3,
         title: Row(
           children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.grey.shade300,
-              ),
-              child: Icon(Icons.account_balance, color: Colors.grey.shade700),
+            Icon(
+              Icons.account_balance_wallet,
+              color: theme.colorScheme.onSurface,
+              size: 32,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -370,14 +756,19 @@ class _DashboardHomeState extends State<DashboardHome>
             icon: CircleAvatar(
               radius: 16,
               backgroundColor: theme.colorScheme.primary,
-              child: Text(
-                userData["name"].toString()[0].toUpperCase(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
+              backgroundImage: photoUrl != null 
+                  ? NetworkImage(photoUrl!)
+                  : null,
+              child: photoUrl == null 
+                  ? Text(
+                      userData["name"].toString()[0].toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    )
+                  : null,
             ),
           ),
           IconButton(
@@ -436,14 +827,11 @@ class _DashboardHomeState extends State<DashboardHome>
           ),
         ),
       ),
-      floatingActionButton: userEqubs.isNotEmpty
-          ? FloatingActionButton(
-              onPressed: () =>
-                  Navigator.pushNamed(context, AppRoutes.groupsScreen),
-              backgroundColor: theme.colorScheme.primary,
-              child: Icon(Icons.group, color: Colors.white, size: 24),
-            )
-          : null,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Navigator.pushNamed(context, AppRoutes.groupsScreen),
+        backgroundColor: theme.colorScheme.primary,
+        child: Icon(Icons.group, color: Colors.white, size: 24),
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onBottomNavTap,
@@ -494,6 +882,8 @@ class _DashboardHomeState extends State<DashboardHome>
           ),
         ],
       ),
+    );
+      },
     );
   }
 }

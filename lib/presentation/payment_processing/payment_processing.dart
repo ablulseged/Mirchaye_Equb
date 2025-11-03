@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/app_export.dart';
 import './widgets/amount_display_card.dart';
 import './widgets/payment_method_card.dart';
 import './widgets/payment_progress_indicator.dart';
-import 'package:robot/presentation/payment_processing/widgets/security_verification_widget.dart';
+import './widgets/security_verification_widget.dart';
+import '../../services/equb_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PaymentProcessing extends StatefulWidget {
   const PaymentProcessing({Key? key}) : super(key: key);
@@ -18,6 +22,10 @@ class _PaymentProcessingState extends State<PaymentProcessing>
     with TickerProviderStateMixin {
   PaymentStage currentStage = PaymentStage.verification;
   String? selectedPaymentMethod;
+  String? selectedScreenshotName;
+  String? selectedBank;
+  String? equbId;
+  final TextEditingController _bankController = TextEditingController();
   bool isLoading = false;
   bool isPaymentCompleted = false;
 
@@ -61,6 +69,17 @@ class _PaymentProcessingState extends State<PaymentProcessing>
     },
   ];
 
+  // Common Ethiopian banks (sample for Chapa channels)
+  final List<String> chapaBanks = const [
+    'Commercial Bank of Ethiopia (CBE)',
+    'Dashen Bank',
+    'Awash Bank',
+    'Bank of Abyssinia',
+    'Hibret Bank',
+    'Wegagen Bank',
+    'Nib Bank',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -69,17 +88,33 @@ class _PaymentProcessingState extends State<PaymentProcessing>
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       if (args != null) {
-        // Update payment data with actual values from navigation
         setState(() {
-          // Update with real data if provided
+          equbId = args['equbId'] as String?;
+          // Preselect method if provided
+          final method = args['method'] as String?;
+          if (method != null && method.isNotEmpty) {
+            selectedPaymentMethod = method;
+          }
+          // Update group context for display
+          final equbName = args['equbName'] as String?;
+          if (equbName != null && equbName.isNotEmpty) {
+            paymentData["groupName"] = equbName;
+          }
         });
       }
     });
   }
 
+  @override
+  void dispose() {
+    _bankController.dispose();
+    super.dispose();
+  }
+
   void _selectPaymentMethod(String method) {
     setState(() {
       selectedPaymentMethod = method;
+      selectedScreenshotName = null;
     });
   }
 
@@ -100,6 +135,16 @@ class _PaymentProcessingState extends State<PaymentProcessing>
       return;
     }
 
+    // Validate method-specific requirements
+    if (selectedPaymentMethod == 'Chapa' && (selectedBank == null || selectedBank!.isEmpty)) {
+      _showErrorMessage('Please select a bank for Chapa');
+      return;
+    }
+    if (selectedPaymentMethod == 'Screenshot' && (selectedScreenshotName == null)) {
+      _showErrorMessage('Please select a screenshot to upload');
+      return;
+    }
+
     setState(() {
       isLoading = true;
       currentStage = PaymentStage.processing;
@@ -112,7 +157,32 @@ class _PaymentProcessingState extends State<PaymentProcessing>
       currentStage = PaymentStage.confirmation;
     });
 
-    await Future.delayed(const Duration(seconds: 2));
+    // Build receipt and persist
+    final String ref = 'TXN' + DateTime.now().millisecondsSinceEpoch.toString();
+    final String? chapaRef = selectedPaymentMethod == 'Chapa'
+        ? ('CHP' + DateTime.now().millisecondsSinceEpoch.toString())
+        : null;
+    try {
+      final double amount = double.tryParse((paymentData['amount'] as String).replaceAll(',', '')) ?? 0.0;
+      final String currency = (paymentData['currency'] as String?) ?? 'ETB';
+      if (equbId != null) {
+        await EqubService().recordPayment(
+          equbId: equbId!,
+          equbName: (paymentData['groupName'] as String?),
+          amount: amount,
+          currency: currency,
+          method: selectedPaymentMethod ?? 'Unknown',
+          bankName: selectedPaymentMethod == 'Chapa' ? selectedBank : null,
+          screenshotName: selectedPaymentMethod == 'Screenshot' ? selectedScreenshotName : null,
+          reference: ref,
+          chapaReferenceId: chapaRef,
+        );
+      }
+    } catch (_) {
+      // Ignore persistence errors
+    }
+
+    await Future.delayed(const Duration(milliseconds: 400));
 
     setState(() {
       isPaymentCompleted = true;
@@ -120,10 +190,49 @@ class _PaymentProcessingState extends State<PaymentProcessing>
     });
 
     // Show success dialog
-    _showSuccessDialog();
+    _showSuccessDialogWithRef(ref, chapaRef: chapaRef);
   }
 
-  void _showSuccessDialog() {
+  Future<void> _pickScreenshot() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+        withData: false,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.single;
+        setState(() {
+          selectedScreenshotName = file.name;
+        });
+      }
+    } catch (_) {
+      _showErrorMessage('Failed to open files');
+    }
+  }
+
+  Future<void> _pickScreenshotFromGallery() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        setState(() {
+          selectedScreenshotName = image.name;
+        });
+      }
+    } catch (_) {
+      _showErrorMessage('Failed to open gallery');
+    }
+  }
+
+  Future<void> _openChapaReceipt(String chapaRef) async {
+    final Uri url = Uri.parse('https://chapa.link/payment-receipt/' + chapaRef);
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      _showErrorMessage('Could not open Chapa receipt');
+    }
+  }
+
+  void _showSuccessDialogWithRef(String reference, {String? chapaRef}) {
     final theme = Theme.of(context);
     showDialog(
       context: context,
@@ -190,13 +299,34 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                       ),
                       SizedBox(height: 1.h),
                       Text(
-                        'TXN${DateTime.now().millisecondsSinceEpoch}',
+                        reference,
                         style: AppTheme.getMonospaceStyle(
                           isLight: true,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+                      if (chapaRef != null) ...[
+                        SizedBox(height: 1.h),
+                        Text(
+                          'Chapa Reference',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        SizedBox(height: 0.5.h),
+                        InkWell(
+                          onTap: () => _openChapaReceipt(chapaRef),
+                          child: Text(
+                            'chapa.link/payment-receipt/' + chapaRef,
+                            style: AppTheme.getMonospaceStyle(
+                              isLight: true,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ).copyWith(color: theme.colorScheme.primary),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -227,6 +357,30 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                     ),
                   ],
                 ),
+                SizedBox(height: 1.h),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Navigator.pushNamed(context, AppRoutes.paymentHistory, arguments: {
+                        'equbId': equbId,
+                      });
+                    },
+                    child: const Text('View in History'),
+                  ),
+                ),
+                if (chapaRef != null)
+                  Padding(
+                    padding: EdgeInsets.only(top: 1.h),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => _openChapaReceipt(chapaRef),
+                        child: const Text('Open Chapa Receipt'),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -298,9 +452,10 @@ class _PaymentProcessingState extends State<PaymentProcessing>
               cycleInfo: paymentData["cycleInfo"],
             ),
 
-            // Payment Method Selection
+            // Payment Method Selection (only when method not preselected)
             if (currentStage == PaymentStage.verification &&
-                !isPaymentCompleted) ...[
+                !isPaymentCompleted &&
+                selectedPaymentMethod == null) ...[
               Container(
                 margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
                 child: Column(
@@ -326,6 +481,16 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                 ),
               ),
 
+              if (selectedPaymentMethod != null)
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4.w),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Chip(
+                      label: Text('Method: ' + (selectedPaymentMethod ?? '')),
+                    ),
+                  ),
+                ),
               // Recipient Details
               Container(
                 margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
@@ -450,6 +615,129 @@ class _PaymentProcessingState extends State<PaymentProcessing>
             ],
 
             SizedBox(height: 4.h),
+
+            // If method is preselected, show method-specific UI
+            if (currentStage == PaymentStage.verification &&
+                !isPaymentCompleted &&
+                selectedPaymentMethod == 'Chapa') ...[
+              Container(
+                margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+                padding: EdgeInsets.all(4.w),
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius: BorderRadius.circular(12.0),
+                  border: Border.all(
+                    color: theme.colorScheme.outline,
+                    width: 1.0,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Choose Bank',
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    SizedBox(height: 1.5.h),
+                    ...chapaBanks.map((bank) => RadioListTile<String>(
+                          title: Text(bank),
+                          value: bank,
+                          groupValue: selectedBank,
+                          onChanged: (v) => setState(() => selectedBank = v),
+                          dense: true,
+                        )),
+                  ],
+                ),
+              ),
+              // Receipt preview
+              Container(
+                margin: EdgeInsets.symmetric(horizontal: 4.w),
+                padding: EdgeInsets.all(4.w),
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius: BorderRadius.circular(12.0),
+                  border: Border.all(
+                    color: theme.colorScheme.outline,
+                    width: 1.0,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Receipt Preview', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                    SizedBox(height: 1.h),
+                    Text('Group: ' + (paymentData['groupName'] as String)),
+                    Text('Amount: ' + (paymentData['amount'] as String) + ' ' + (paymentData['currency'] as String)),
+                    Text('Method: Chapa'),
+                    Text('Bank: ' + (_bankController.text.isEmpty ? '—' : _bankController.text)),
+                  ],
+                ),
+              ),
+              // Password/PIN verification for Chapa
+              SecurityVerificationWidget(
+                onPinEntered: _handlePinVerification,
+                onBiometricAuth: _handleBiometricAuth,
+                isBiometricAvailable: true,
+                isLoading: isLoading,
+              ),
+            ],
+
+            if (currentStage == PaymentStage.verification &&
+                !isPaymentCompleted &&
+                selectedPaymentMethod == 'Screenshot') ...[
+              Container(
+                margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+                padding: EdgeInsets.all(4.w),
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius: BorderRadius.circular(12.0),
+                  border: Border.all(
+                    color: theme.colorScheme.outline,
+                    width: 1.0,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Upload Payment Screenshot',
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    SizedBox(height: 1.5.h),
+                    Row(
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: _pickScreenshot,
+                          icon: const Icon(Icons.folder_open),
+                          label: const Text('Files'),
+                        ),
+                        SizedBox(width: 2.w),
+                        OutlinedButton.icon(
+                          onPressed: _pickScreenshotFromGallery,
+                          icon: const Icon(Icons.photo_library),
+                          label: const Text('Gallery'),
+                        ),
+                        SizedBox(width: 3.w),
+                        if (selectedScreenshotName != null)
+                          Flexible(
+                            child: Chip(
+                              label: Text(selectedScreenshotName!),
+                            ),
+                          ),
+                      ],
+                    ),
+                    SizedBox(height: 2.h),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => _processPayment(),
+                        child: const Text('Submit Screenshot'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),

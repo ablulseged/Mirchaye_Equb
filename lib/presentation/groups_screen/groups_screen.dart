@@ -6,6 +6,8 @@ import './widgets/empty_state_widget.dart';
 import './widgets/group_card_widget.dart';
 import './widgets/group_creation_modal.dart';
 import './widgets/search_bar_widget.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../services/equb_service.dart';
 
 class GroupsScreen extends StatefulWidget {
   const GroupsScreen({Key? key}) : super(key: key);
@@ -20,57 +22,15 @@ class _GroupsScreenState extends State<GroupsScreen>
   bool _isSearchExpanded = false;
   String _searchQuery = '';
 
-  // My Equbs - Limited to 1 group maximum
-  final List<Map<String, dynamic>> _myEqubs = [
-    {
-      'id': 1,
-      'name': 'Family Savings Circle',
-      'description':
-          'Monthly savings group for family members and close friends',
-      'amount': 5000.0,
-      'maxMembers': 12,
-      'currentMembers': 8,
-      'status': 'Active',
-      'frequency': 'Monthly',
-      'createdAt': DateTime.now().subtract(const Duration(days: 30)),
-      'isOwner': true,
-    },
-  ];
+  // My Equbs - now populated from Firestore
+  final List<Map<String, dynamic>> _myEqubs = [];
 
-  // Joined Equbs - Limited to 2 groups maximum
-  final List<Map<String, dynamic>> _joinedEqubs = [
-    {
-      'id': 4,
-      'name': 'Neighborhood Support Group',
-      'description': 'Supporting each other through monthly contributions',
-      'amount': 2500.0,
-      'maxMembers': 15,
-      'currentMembers': 12,
-      'status': 'Active',
-      'frequency': 'Monthly',
-      'createdAt': DateTime.now().subtract(const Duration(days: 45)),
-      'isOwner': false,
-      'owner': 'Almaz Tadesse',
-    },
-    {
-      'id': 5,
-      'name': 'Professional Network Equb',
-      'description':
-          'Career-focused professionals pooling resources for growth',
-      'amount': 8000.0,
-      'maxMembers': 10,
-      'currentMembers': 9,
-      'status': 'Active',
-      'frequency': 'Monthly',
-      'createdAt': DateTime.now().subtract(const Duration(days: 60)),
-      'isOwner': false,
-      'owner': 'Dawit Bekele',
-    },
-  ];
+  // Joined Equbs - now populated from Firestore
+  final List<Map<String, dynamic>> _joinedEqubs = [];
 
   final List<Map<String, dynamic>> _systemGroups = [
     {
-      'id': 7,
+      'id': '7',
       'name': 'Auto-Generated Group #247',
       'description':
           'System created group when member limit reached in popular category',
@@ -84,7 +44,7 @@ class _GroupsScreenState extends State<GroupsScreen>
       'isSystemGenerated': true,
     },
     {
-      'id': 8,
+      'id': '8',
       'name': 'Auto-Generated Group #248',
       'description':
           'Automatically created for overflow members from high-demand groups',
@@ -129,8 +89,8 @@ class _GroupsScreenState extends State<GroupsScreen>
     }).toList();
   }
 
-  bool get _canCreateNewGroup => _myEqubs.length < MAX_MY_EQUBS;
-  bool get _canJoinNewGroup => _joinedEqubs.length < MAX_JOINED_EQUBS;
+  bool get _canCreateNewGroup => true; // compute from stream in UI if needed
+  bool get _canJoinNewGroup => true;
 
   @override
   Widget build(BuildContext context) {
@@ -183,12 +143,10 @@ class _GroupsScreenState extends State<GroupsScreen>
                 ),
                 unselectedLabelStyle: theme.textTheme.labelMedium
                     ?.copyWith(fontWeight: FontWeight.w400),
-                tabs: [
-                  Tab(text: 'My Equb (${_myEqubs.length}/$MAX_MY_EQUBS)'),
-                  Tab(
-                    text: 'Joined (${_joinedEqubs.length}/$MAX_JOINED_EQUBS)',
-                  ),
-                  const Tab(text: 'System'),
+                tabs: const [
+                  Tab(text: 'My Equb'),
+                  Tab(text: 'Joined'),
+                  Tab(text: 'System'),
                 ],
               ),
             ),
@@ -206,237 +164,155 @@ class _GroupsScreenState extends State<GroupsScreen>
           ],
         ),
       ),
-      floatingActionButton: _canCreateNewGroup
-          ? FloatingActionButton.extended(
-              onPressed: _showGroupCreationModal,
-              backgroundColor: theme.colorScheme.primary,
-              foregroundColor: theme.colorScheme.onPrimary,
-              icon: CustomIconWidget(
-                iconName: 'add',
-                color: theme.colorScheme.onPrimary,
-                size: 24,
-              ),
-              label: Text(
-                'Create Equb',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.onPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            )
-          : FloatingActionButton.extended(
-              onPressed: () => _showLimitReachedDialog('create'),
-              backgroundColor: theme.colorScheme.outline,
-              foregroundColor: theme.colorScheme.onSurface,
-              icon: CustomIconWidget(
-                iconName: 'block',
-                color: theme.colorScheme.onSurface,
-                size: 24,
-              ),
-              label: Text(
-                'Limit Reached',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
+      floatingActionButton: null,
     );
   }
 
   Widget _buildMyEqubsTab() {
     final theme = Theme.of(context);
-    final filteredGroups = _getFilteredGroups(_myEqubs);
+    final equbService = EqubService();
 
-    if (filteredGroups.isEmpty && _searchQuery.isEmpty) {
-      return EmptyStateWidget(
-        title: 'Create Your Equb',
-        description:
-            'You can create one Equb group to start building your savings community. Invite friends and family to join your financial journey.',
-        buttonText: 'Create New Equb',
-        iconName: 'group_add',
-        onButtonPressed: _canCreateNewGroup
-            ? _showGroupCreationModal
-            : () => _showLimitReachedDialog('create'),
-      );
-    }
+    return StreamBuilder(
+      stream: equbService.streamOwnedEqubsByCurrentUser(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final docs = snapshot.data?.docs ?? [];
+        final groups = docs.map((doc) {
+          final data = doc.data();
+          return {
+            'id': doc.id,
+            'name': data['name'] ?? 'Untitled Equb',
+            'description': data['description'] ?? '',
+            'amount': (data['contributionAmount'] is num)
+                ? (data['contributionAmount'] as num).toDouble()
+                : 0.0,
+            'maxMembers': data['maxMembers'] ?? 0,
+            'currentMembers': data['currentMembers'] ?? 0,
+            'status': 'Active',
+            'frequency': data['paymentFrequency'] ?? 'Monthly',
+            'createdAt': data['createdAt']?.toDate() ?? DateTime.now(),
+            'isOwner': true,
+            'owner': data['ownerEmail'] ?? '',
+          };
+        }).toList();
 
-    if (filteredGroups.isEmpty && _searchQuery.isNotEmpty) {
-      return EmptyStateWidget(
-        title: 'No Groups Found',
-        description:
-            'No groups match your search criteria. Try adjusting your search terms.',
-        buttonText: 'Clear Search',
-        iconName: 'search_off',
-        onButtonPressed: () {
-          setState(() {
-            _searchQuery = '';
-            _isSearchExpanded = false;
-          });
-        },
-      );
-    }
+        final filteredGroups = _getFilteredGroups(groups);
 
-    return RefreshIndicator(
-      onRefresh: () async {
-        await Future.delayed(const Duration(seconds: 1));
+        if (filteredGroups.isEmpty) {
+          return EmptyStateWidget(
+            title: 'Create Your Equb',
+            description:
+                'You can create one Equb group to start building your savings community. Invite friends and family to join your financial journey.',
+            buttonText: 'Create New Equb',
+            iconName: 'group_add',
+            onButtonPressed: _showGroupCreationModal,
+          );
+        }
+
+        return ListView.builder(
+          padding: EdgeInsets.only(bottom: 10.h),
+          itemCount: filteredGroups.length,
+          itemBuilder: (context, index) {
+            return GroupCardWidget(
+              groupData: filteredGroups[index],
+              groupType: 'my_equbs',
+              onTap: () => _showGroupDetails(filteredGroups[index]),
+              onLongPress: () => _showGroupOptions(filteredGroups[index]),
+            );
+          },
+        );
       },
-      child: Column(
-        children: [
-          // Limit status banner
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
-            padding: EdgeInsets.all(3.w),
-            decoration: BoxDecoration(
-              color: _myEqubs.length >= MAX_MY_EQUBS
-                  ? theme.colorScheme.errorContainer
-                  : theme.colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: _myEqubs.length >= MAX_MY_EQUBS
-                    ? theme.colorScheme.error.withValues(
-                        alpha: 0.3,
-                      )
-                    : theme.colorScheme.primary.withValues(
-                        alpha: 0.3,
-                      ),
-              ),
-            ),
-            child: Row(
-              children: [
-                CustomIconWidget(
-                  iconName: _myEqubs.length >= MAX_MY_EQUBS
-                      ? 'warning'
-                      : 'info',
-                  color: _myEqubs.length >= MAX_MY_EQUBS
-                      ? theme.colorScheme.error
-                      : theme.colorScheme.primary,
-                  size: 20,
-                ),
-                SizedBox(width: 3.w),
-                Expanded(
-                  child: Text(
-                    _myEqubs.length >= MAX_MY_EQUBS
-                        ? 'You have reached the maximum limit of $MAX_MY_EQUBS Equb group.'
-                        : 'You can create ${MAX_MY_EQUBS - _myEqubs.length} more Equb group.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: _myEqubs.length >= MAX_MY_EQUBS
-                          ? theme.colorScheme.error
-                          : theme.colorScheme.primary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              padding: EdgeInsets.only(bottom: 10.h),
-              itemCount: filteredGroups.length,
-              itemBuilder: (context, index) {
-                return GroupCardWidget(
-                  groupData: filteredGroups[index],
-                  groupType: 'my_equbs',
-                  onTap: () => _showGroupDetails(filteredGroups[index]),
-                  onLongPress: () => _showGroupOptions(filteredGroups[index]),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
     );
   }
 
   Widget _buildJoinedEqubsTab() {
-    final theme = Theme.of(context);
-    final filteredGroups = _getFilteredGroups(_joinedEqubs);
+    final equbService = EqubService();
+    return StreamBuilder(
+      stream: equbService.streamEqubsWhereMember(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final docs = snapshot.data?.docs ?? [];
+        final primaryGroups = docs.map((doc) {
+          final data = doc.data();
+          return {
+            'id': doc.id,
+            'name': data['name'] ?? 'Untitled Equb',
+            'description': data['description'] ?? '',
+            'amount': (data['contributionAmount'] is num)
+                ? (data['contributionAmount'] as num).toDouble()
+                : 0.0,
+            'maxMembers': data['maxMembers'] ?? 0,
+            'currentMembers': data['currentMembers'] ?? 0,
+            'status': 'Active',
+            'frequency': data['paymentFrequency'] ?? 'Monthly',
+            'createdAt': data['createdAt']?.toDate() ?? DateTime.now(),
+            'isOwner': (data['ownerUid'] == FirebaseAuth.instance.currentUser?.uid),
+            'owner': data['ownerEmail'] ?? '',
+          };
+        }).toList();
 
-    if (filteredGroups.isEmpty && _searchQuery.isEmpty) {
-      return EmptyStateWidget(
-        title: 'Join Equb Groups',
-        description:
-            'You can join up to $MAX_JOINED_EQUBS existing Equb groups in your community. Connect with others and start saving together.',
-        buttonText: 'Browse Groups',
-        iconName: 'group',
-        onButtonPressed: () {
-          // Navigate to browse groups screen
-        },
-      );
-    }
+        // If primary query returns results, show them
+        if (primaryGroups.isNotEmpty) {
+          final filteredGroups = _getFilteredGroups(primaryGroups);
+          return ListView.builder(
+            padding: EdgeInsets.only(bottom: 10.h),
+            itemCount: filteredGroups.length,
+            itemBuilder: (context, index) {
+              return GroupCardWidget(
+                groupData: filteredGroups[index],
+                groupType: 'joined_equbs',
+                onTap: () => _showGroupDetails(filteredGroups[index]),
+                onLongPress: () => _showGroupOptions(filteredGroups[index]),
+              );
+            },
+          );
+        }
 
-    if (filteredGroups.isEmpty && _searchQuery.isNotEmpty) {
-      return EmptyStateWidget(
-        title: 'No Groups Found',
-        description:
-            'No groups match your search criteria. Try adjusting your search terms.',
-        buttonText: 'Clear Search',
-        iconName: 'search_off',
-        onButtonPressed: () {
-          setState(() {
-            _searchQuery = '';
-            _isSearchExpanded = false;
-          });
-        },
-      );
-    }
+        // Fallback: scan equbs and check membership via members/{uid}
+        return StreamBuilder(
+          stream: equbService.streamJoinedEqubsByScan(),
+          builder: (context, fallbackSnap) {
+            if (fallbackSnap.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final docs2 = fallbackSnap.data?.toList() ?? [];
+            final groups = docs2.map((doc) {
+              final data = doc.data();
+              return {
+                'id': doc.id,
+                'name': data['name'] ?? 'Untitled Equb',
+                'description': data['description'] ?? '',
+                'amount': (data['contributionAmount'] is num)
+                    ? (data['contributionAmount'] as num).toDouble()
+                    : 0.0,
+                'maxMembers': data['maxMembers'] ?? 0,
+                'currentMembers': data['currentMembers'] ?? 0,
+                'status': 'Active',
+                'frequency': data['paymentFrequency'] ?? 'Monthly',
+                'createdAt': data['createdAt']?.toDate() ?? DateTime.now(),
+                'isOwner': (data['ownerUid'] == FirebaseAuth.instance.currentUser?.uid),
+                'owner': data['ownerEmail'] ?? '',
+              };
+            }).toList();
 
-    return RefreshIndicator(
-      onRefresh: () async {
-        await Future.delayed(const Duration(seconds: 1));
-      },
-      child: Column(
-        children: [
-          // Limit status banner
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
-            padding: EdgeInsets.all(3.w),
-            decoration: BoxDecoration(
-              color: _joinedEqubs.length >= MAX_JOINED_EQUBS
-                  ? theme.colorScheme.errorContainer
-                  : theme.colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: _joinedEqubs.length >= MAX_JOINED_EQUBS
-                    ? theme.colorScheme.error.withValues(
-                        alpha: 0.3,
-                      )
-                    : theme.colorScheme.primary.withValues(
-                        alpha: 0.3,
-                      ),
-              ),
-            ),
-            child: Row(
-              children: [
-                CustomIconWidget(
-                  iconName: _joinedEqubs.length >= MAX_JOINED_EQUBS
-                      ? 'warning'
-                      : 'info',
-                  color: _joinedEqubs.length >= MAX_JOINED_EQUBS
-                      ? theme.colorScheme.error
-                      : theme.colorScheme.primary,
-                  size: 20,
-                ),
-                SizedBox(width: 3.w),
-                Expanded(
-                  child: Text(
-                    _joinedEqubs.length >= MAX_JOINED_EQUBS
-                        ? 'You have reached the maximum limit of $MAX_JOINED_EQUBS joined groups.'
-                        : 'You can join ${MAX_JOINED_EQUBS - _joinedEqubs.length} more groups.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: _joinedEqubs.length >= MAX_JOINED_EQUBS
-                          ? theme.colorScheme.error
-                          : theme.colorScheme.primary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
+            final filteredGroups = _getFilteredGroups(groups);
+
+            if (filteredGroups.isEmpty) {
+              return EmptyStateWidget(
+                title: 'No Joined Groups',
+                description:
+                    'You haven\'t joined any groups yet or your requests are pending approval.',
+                buttonText: 'Browse Groups',
+                iconName: 'group',
+                onButtonPressed: () {},
+              );
+            }
+
+            return ListView.builder(
               padding: EdgeInsets.only(bottom: 10.h),
               itemCount: filteredGroups.length,
               itemBuilder: (context, index) {
@@ -447,10 +323,10 @@ class _GroupsScreenState extends State<GroupsScreen>
                   onLongPress: () => _showGroupOptions(filteredGroups[index]),
                 );
               },
-            ),
-          ),
-        ],
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -635,10 +511,37 @@ class _GroupsScreenState extends State<GroupsScreen>
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                // Navigate to group management
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.groupManagement,
+                  arguments: {
+                    'equbId': groupData['id'],
+                    'isOwner': true,
+                  },
+                );
               },
               child: Text(
                 'Manage',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.onPrimary,
+                ),
+              ),
+            )
+          else
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.groupManagement,
+                  arguments: {
+                    'equbId': groupData['id'],
+                    'isOwner': false,
+                  },
+                );
+              },
+              child: Text(
+                'Open',
                 style: theme.textTheme.labelLarge?.copyWith(
                   color: theme.colorScheme.onPrimary,
                 ),
