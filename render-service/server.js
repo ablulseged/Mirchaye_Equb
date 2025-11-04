@@ -12,25 +12,44 @@ app.use(express.json());
 // Initialize Firebase Admin SDK
 let serviceAccount;
 
+console.log('Starting Firebase Admin SDK initialization...');
+console.log('FIREBASE_SERVICE_ACCOUNT is set:', !!process.env.FIREBASE_SERVICE_ACCOUNT);
+
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   try {
+    console.log('Attempting to parse FIREBASE_SERVICE_ACCOUNT as JSON...');
     serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    console.log('✅ Successfully parsed FIREBASE_SERVICE_ACCOUNT as JSON');
   } catch (e) {
+    console.log('Failed to parse as JSON, trying base64 decode...');
     try {
       serviceAccount = JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, 'base64').toString('ascii'));
+      console.log('✅ Successfully parsed FIREBASE_SERVICE_ACCOUNT from base64');
     } catch (err) {
-      console.error('Error parsing FIREBASE_SERVICE_ACCOUNT environment variable:', err);
+      console.error('❌ Error parsing FIREBASE_SERVICE_ACCOUNT environment variable:');
+      console.error('First error:', e.message);
+      console.error('Second error:', err.message);
+      console.error('Please ensure FIREBASE_SERVICE_ACCOUNT contains valid JSON');
       process.exit(1);
     }
   }
 } else {
-  console.error('FIREBASE_SERVICE_ACCOUNT environment variable is not set.');
+  console.error('❌ FIREBASE_SERVICE_ACCOUNT environment variable is not set.');
+  console.error('Please set this in Render Dashboard → Environment → Add Environment Variable');
   process.exit(1);
 }
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
+try {
+  console.log('Initializing Firebase Admin SDK...');
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+  console.log('✅ Firebase Admin SDK initialized successfully');
+} catch (error) {
+  console.error('❌ Error initializing Firebase Admin SDK:', error.message);
+  console.error('Please check your FIREBASE_SERVICE_ACCOUNT credentials');
+  process.exit(1);
+}
 
 // API endpoint to send push notifications
 app.post('/api/send-notification', async (req, res) => {
@@ -93,5 +112,8 @@ app.get('/test', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`✅ Health check available at: /health`);
+  console.log(`✅ Test endpoint available at: /test`);
+  console.log(`✅ Notification endpoint available at: /api/send-notification`);
 }); 
