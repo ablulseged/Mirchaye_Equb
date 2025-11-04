@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'messaging_service.dart';
 
 class NotificationService {
@@ -9,6 +11,9 @@ class NotificationService {
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  // Render service URL for push notifications
+  static const String renderApiUrl = 'https://robot-9qcb.onrender.com';
 
   CollectionReference<Map<String, dynamic>> _userNotifications(String userId) =>
       _db.collection('users').doc(userId).collection('notifications');
@@ -214,26 +219,77 @@ class NotificationService {
     }
   }
 
-  /// Send push notification via Cloud Function trigger
-  /// This creates a document that a Cloud Function can listen to
+  /// Send push notification via Render API
   Future<void> _sendPushNotificationViaCloudFunction({
     required String fcmToken,
     required String title,
     required String body,
     required Map<String, dynamic> data,
   }) async {
+    if (renderApiUrl == 'YOUR_RENDER_API_URL_HERE' || renderApiUrl.isEmpty) {
+      print('⚠️ Render API URL is not configured. Skipping push notification.');
+      print('⚠️ Please update renderApiUrl in notification_service.dart with your Render service URL.');
+      return;
+    }
+
     try {
-      // Create a notification request document that Cloud Function can process
-      await _db.collection('notification_requests').add({
-        'fcmToken': fcmToken,
-        'title': title,
-        'body': body,
-        'data': data,
-        'createdAt': FieldValue.serverTimestamp(),
-        'status': 'pending',
-      });
+      final response = await http.post(
+        Uri.parse('$renderApiUrl/api/send-notification'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'fcmToken': fcmToken,
+          'title': title,
+          'body': body,
+          'data': data,
+        }),
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('⚠️ Timeout connecting to Render service');
+          return http.Response('Timeout', 408);
+        },
+      );
+
+      if (response.statusCode == 200) {
+        print('✅ Push notification sent successfully via Render');
+      } else {
+        print('❌ Failed to send push notification via Render: ${response.statusCode} ${response.body}');
+      }
     } catch (e) {
-      print('Error creating notification request: $e');
+      print('❌ Error sending push notification request to Render: $e');
+    }
+  }
+
+  /// Test connection to Render service
+  /// Returns true if connection is successful, false otherwise
+  Future<bool> testRenderConnection() async {
+    if (renderApiUrl == 'YOUR_RENDER_API_URL_HERE' || renderApiUrl.isEmpty) {
+      print('❌ Render API URL is not configured');
+      return false;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('$renderApiUrl/test'),
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('⚠️ Timeout connecting to Render service');
+          return http.Response('Timeout', 408);
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        print('✅ Render service is connected: ${responseData['message']}');
+        return true;
+      } else {
+        print('❌ Render service returned status code: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      print('❌ Error testing Render connection: $e');
+      return false;
     }
   }
 
