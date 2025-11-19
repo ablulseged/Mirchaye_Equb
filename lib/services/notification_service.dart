@@ -13,7 +13,7 @@ class NotificationService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Render service URL for push notifications
-  static const String renderApiUrl = 'https://robot-9qcb.onrender.com';
+  static const String renderApiUrl = 'https://render-coz0.onrender.com';
 
   CollectionReference<Map<String, dynamic>> _userNotifications(String userId) =>
       _db.collection('users').doc(userId).collection('notifications');
