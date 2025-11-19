@@ -16,21 +16,64 @@ console.log('Starting Firebase Admin SDK initialization...');
 console.log('FIREBASE_SERVICE_ACCOUNT is set:', !!process.env.FIREBASE_SERVICE_ACCOUNT);
 
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-  try {
-    console.log('Attempting to parse FIREBASE_SERVICE_ACCOUNT as JSON...');
-    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    console.log('✅ Successfully parsed FIREBASE_SERVICE_ACCOUNT as JSON');
-  } catch (e) {
-    console.log('Failed to parse as JSON, trying base64 decode...');
+  const envValue = process.env.FIREBASE_SERVICE_ACCOUNT;
+  console.log(`FIREBASE_SERVICE_ACCOUNT length: ${envValue.length} characters`);
+  console.log(`First 50 characters: ${envValue.substring(0, 50)}...`);
+  
+  // Check if it looks like base64 first (contains non-JSON characters)
+  if (!envValue.trim().startsWith('{')) {
+    console.log('Value does not start with "{", trying base64 decode...');
     try {
-      serviceAccount = JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, 'base64').toString('ascii'));
+      const decoded = Buffer.from(envValue, 'base64').toString('utf-8');
+      console.log('Base64 decoded successfully, attempting JSON parse...');
+      serviceAccount = JSON.parse(decoded);
       console.log('✅ Successfully parsed FIREBASE_SERVICE_ACCOUNT from base64');
-    } catch (err) {
-      console.error('❌ Error parsing FIREBASE_SERVICE_ACCOUNT environment variable:');
-      console.error('First error:', e.message);
-      console.error('Second error:', err.message);
-      console.error('Please ensure FIREBASE_SERVICE_ACCOUNT contains valid JSON');
-      process.exit(1);
+    } catch (base64Err) {
+      console.error('❌ Failed to decode as base64, trying direct JSON parse...');
+      try {
+        serviceAccount = JSON.parse(envValue);
+        console.log('✅ Successfully parsed FIREBASE_SERVICE_ACCOUNT as JSON');
+      } catch (jsonErr) {
+        console.error('❌ Error parsing FIREBASE_SERVICE_ACCOUNT environment variable:');
+        console.error('Base64 decode error:', base64Err.message);
+        console.error('JSON parse error:', jsonErr.message);
+        console.error('Value preview (first 100 chars):', envValue.substring(0, 100));
+        console.error('');
+        console.error('⚠️  TROUBLESHOOTING:');
+        console.error('1. Make sure you copied the ENTIRE JSON from Firebase Console');
+        console.error('2. The JSON should start with "{" and end with "}"');
+        console.error('3. Remove any extra spaces or line breaks at the start/end');
+        console.error('4. In Render, paste it as a single-line JSON (Render will handle formatting)');
+        console.error('5. Do NOT wrap it in quotes - paste the JSON directly');
+        process.exit(1);
+      }
+    }
+  } else {
+    // Try direct JSON parse first
+    try {
+      console.log('Attempting to parse FIREBASE_SERVICE_ACCOUNT as JSON...');
+      serviceAccount = JSON.parse(envValue);
+      console.log('✅ Successfully parsed FIREBASE_SERVICE_ACCOUNT as JSON');
+    } catch (e) {
+      console.log('Failed to parse as JSON, trying base64 decode...');
+      try {
+        const decoded = Buffer.from(envValue, 'base64').toString('utf-8');
+        serviceAccount = JSON.parse(decoded);
+        console.log('✅ Successfully parsed FIREBASE_SERVICE_ACCOUNT from base64');
+      } catch (err) {
+        console.error('❌ Error parsing FIREBASE_SERVICE_ACCOUNT environment variable:');
+        console.error('JSON parse error:', e.message);
+        console.error('Base64 decode error:', err.message);
+        console.error('Value preview (first 100 chars):', envValue.substring(0, 100));
+        console.error('');
+        console.error('⚠️  TROUBLESHOOTING:');
+        console.error('1. Make sure you copied the ENTIRE JSON from Firebase Console');
+        console.error('2. The JSON should start with "{" and end with "}"');
+        console.error('3. Remove any extra spaces or line breaks at the start/end');
+        console.error('4. In Render, paste it as a single-line JSON (Render will handle formatting)');
+        console.error('5. Do NOT wrap it in quotes - paste the JSON directly');
+        process.exit(1);
+      }
     }
   }
 } else {
@@ -41,9 +84,21 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT) {
 
 try {
   console.log('Initializing Firebase Admin SDK...');
-  admin.initializeApp({
+  const firebaseConfig = {
     credential: admin.credential.cert(serviceAccount),
-  });
+  };
+  
+  // Add databaseURL if provided (optional, only needed for Realtime Database)
+  if (process.env.FIREBASE_DATABASE_URL) {
+    firebaseConfig.databaseURL = process.env.FIREBASE_DATABASE_URL;
+    console.log('Using custom databaseURL from environment variable');
+  } else if (serviceAccount.project_id) {
+    // Auto-generate databaseURL from project ID (common pattern)
+    firebaseConfig.databaseURL = `https://${serviceAccount.project_id}-default-rtdb.firebaseio.com`;
+    console.log(`Using auto-generated databaseURL: ${firebaseConfig.databaseURL}`);
+  }
+  
+  admin.initializeApp(firebaseConfig);
   console.log('✅ Firebase Admin SDK initialized successfully');
 } catch (error) {
   console.error('❌ Error initializing Firebase Admin SDK:', error.message);
