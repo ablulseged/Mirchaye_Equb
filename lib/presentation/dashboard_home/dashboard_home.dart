@@ -12,6 +12,7 @@ import '../../services/equb_service.dart';
 import '../../services/payment_service.dart';
 import '../../services/user_service.dart';
 import '../../services/notification_service.dart';
+import '../../services/messaging_service.dart' show showLocalNotification;
 
 class DashboardHome extends StatefulWidget {
   const DashboardHome({Key? key}) : super(key: key);
@@ -125,10 +126,10 @@ class _DashboardHomeState extends State<DashboardHome>
     // Listen for new notifications and show popup
     _notificationService.streamNotifications().listen((snapshot) {
       if (!mounted) return;
-      
+
       final notifications = snapshot.docs;
       if (notifications.isEmpty) return;
-      
+
       // Sort notifications by createdAt to get the most recent
       final sortedNotifications = List.from(notifications);
       sortedNotifications.sort((a, b) {
@@ -139,17 +140,17 @@ class _DashboardHomeState extends State<DashboardHome>
         if (createdAtB == null) return -1;
         return createdAtB.compareTo(createdAtA);
       });
-      
+
       // Get the most recent notification
       final latestNotification = sortedNotifications.first;
       final latestId = latestNotification.id;
-      
+
       // Only show popup if this is a new notification (different from last one)
       if (_lastNotificationId == null || _lastNotificationId != latestId) {
         _lastNotificationId = latestId;
         final data = latestNotification.data();
         final isRead = data['isRead'] as bool? ?? false;
-        
+
         // Only show popup for unread notifications
         if (!isRead && mounted) {
           _showNotificationPopup(data);
@@ -161,40 +162,57 @@ class _DashboardHomeState extends State<DashboardHome>
   void _showNotificationPopup(Map<String, dynamic> data) {
     final title = data['title'] as String? ?? 'New Notification';
     final message = data['message'] as String? ?? '';
-    
-    // Show a nice popup notification
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+    final type = data['type'] as String? ?? 'general';
+    final showHeadsUp = data['showHeadsUp'] as bool? ?? false;
+
+    // Show heads-up (overlay) notification only if flag is set
+    // Payment notifications: only for group owner
+    // Announcement notifications: for all members
+    if (showHeadsUp) {
+      try {
+        showLocalNotification(title, message, {
+          'type': type,
+          'equbId': data['equbId'] as String? ?? '',
+          'equbName': data['equbName'] as String? ?? '',
+          ...?data['data'] as Map<String, dynamic>?,
+        });
+      } catch (e) {
+        print('Error showing heads-up notification: $e');
+      }
+    }
+
+    // Always show in-app SnackBar popup
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              message,
-              style: const TextStyle(fontSize: 14),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(message, style: const TextStyle(fontSize: 14)),
+            ],
+          ),
+          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+          action: SnackBarAction(
+            label: 'View',
+            textColor: Theme.of(context).colorScheme.primary,
+            onPressed: () {
+              Navigator.pushNamed(context, AppRoutes.notificationsScreen);
+            },
+          ),
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
         ),
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-        action: SnackBarAction(
-          label: 'View',
-          textColor: Theme.of(context).colorScheme.primary,
-          onPressed: () {
-            Navigator.pushNamed(context, AppRoutes.notificationsScreen);
-          },
-        ),
-        duration: const Duration(seconds: 4),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+      );
+    }
   }
 
   Future<void> _handleRefresh() async {
@@ -279,25 +297,62 @@ class _DashboardHomeState extends State<DashboardHome>
                   stream: EqubService().streamEqubsWhereMember(),
                   builder: (context, memberSnap) {
                     final memberDocs = (memberSnap.data as dynamic)?.docs ?? [];
-                    final memberGroups = memberDocs.map<Map<String, dynamic>>((doc) {
-                      final data = doc.data();
-                      return {
-                        'id': doc.id,
-                        'name': data['name'] ?? 'Untitled Equb',
-                      };
-                    }).toList();
-
-                    return StreamBuilder(
-                      stream: EqubService().streamOwnedEqubsByCurrentUser(),
-                      builder: (context, ownedSnap) {
-                        final ownedDocs = (ownedSnap.data as dynamic)?.docs ?? [];
-                        final ownedGroups = ownedDocs.map<Map<String, dynamic>>((doc) {
+                    final memberGroups = memberDocs
+                        .map<Map<String, dynamic>>((doc) {
                           final data = doc.data();
                           return {
                             'id': doc.id,
                             'name': data['name'] ?? 'Untitled Equb',
+                            'isSystemGenerated':
+                                data['isSystemGenerated'] ?? false,
+                            'isMirchayeGroup': data['isMirchayeGroup'] ?? false,
+                            'ownerUid': data['ownerUid'] ?? '',
                           };
-                        }).toList();
+                        })
+                        .where((group) {
+                          // Filter out system-generated groups
+                          final isSystem =
+                              group['isSystemGenerated'] as bool? ?? false;
+                          final isMirchaye =
+                              group['isMirchayeGroup'] as bool? ?? false;
+                          final ownerUid = group['ownerUid'] as String? ?? '';
+                          return !isSystem &&
+                              !isMirchaye &&
+                              ownerUid != 'system';
+                        })
+                        .toList();
+
+                    return StreamBuilder(
+                      stream: EqubService().streamOwnedEqubsByCurrentUser(),
+                      builder: (context, ownedSnap) {
+                        final ownedDocs =
+                            (ownedSnap.data as dynamic)?.docs ?? [];
+                        final ownedGroups = ownedDocs
+                            .map<Map<String, dynamic>>((doc) {
+                              final data = doc.data();
+                              return {
+                                'id': doc.id,
+                                'name': data['name'] ?? 'Untitled Equb',
+                                'isSystemGenerated':
+                                    data['isSystemGenerated'] ?? false,
+                                'isMirchayeGroup':
+                                    data['isMirchayeGroup'] ?? false,
+                                'ownerUid': data['ownerUid'] ?? '',
+                              };
+                            })
+                            .where((group) {
+                              // Filter out system-generated groups
+                              final isSystem =
+                                  group['isSystemGenerated'] as bool? ?? false;
+                              final isMirchaye =
+                                  group['isMirchayeGroup'] as bool? ?? false;
+                              final ownerUid =
+                                  group['ownerUid'] as String? ?? '';
+                              return !isSystem &&
+                                  !isMirchaye &&
+                                  ownerUid != 'system';
+                            })
+                            .toList();
 
                         final merged = <String, Map<String, dynamic>>{};
                         for (final g in [...memberGroups, ...ownedGroups]) {
@@ -305,9 +360,13 @@ class _DashboardHomeState extends State<DashboardHome>
                         }
                         final groups = merged.values.toList();
 
-                        if ((memberSnap.connectionState == ConnectionState.waiting) ||
-                            (ownedSnap.connectionState == ConnectionState.waiting)) {
-                          return const Center(child: CircularProgressIndicator());
+                        if ((memberSnap.connectionState ==
+                                ConnectionState.waiting) ||
+                            (ownedSnap.connectionState ==
+                                ConnectionState.waiting)) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
                         }
 
                         if (groups.isEmpty) {
@@ -315,17 +374,42 @@ class _DashboardHomeState extends State<DashboardHome>
                           return StreamBuilder(
                             stream: EqubService().streamJoinedEqubsByScan(),
                             builder: (context, scanSnap) {
-                              final scanDocs = (scanSnap.data as List<dynamic>?) ?? [];
-                              final scanGroups = scanDocs.map<Map<String, dynamic>>((doc) {
-                                final data = doc.data();
-                                return {
-                                  'id': doc.id,
-                                  'name': data['name'] ?? 'Untitled Equb',
-                                };
-                              }).toList();
+                              final scanDocs =
+                                  (scanSnap.data as List<dynamic>?) ?? [];
+                              final scanGroups = scanDocs
+                                  .map<Map<String, dynamic>>((doc) {
+                                    final data = doc.data();
+                                    return {
+                                      'id': doc.id,
+                                      'name': data['name'] ?? 'Untitled Equb',
+                                      'isSystemGenerated':
+                                          data['isSystemGenerated'] ?? false,
+                                      'isMirchayeGroup':
+                                          data['isMirchayeGroup'] ?? false,
+                                      'ownerUid': data['ownerUid'] ?? '',
+                                    };
+                                  })
+                                  .where((group) {
+                                    // Filter out system-generated groups
+                                    final isSystem =
+                                        group['isSystemGenerated'] as bool? ??
+                                        false;
+                                    final isMirchaye =
+                                        group['isMirchayeGroup'] as bool? ??
+                                        false;
+                                    final ownerUid =
+                                        group['ownerUid'] as String? ?? '';
+                                    return !isSystem &&
+                                        !isMirchaye &&
+                                        ownerUid != 'system';
+                                  })
+                                  .toList();
 
-                              if (scanSnap.connectionState == ConnectionState.waiting) {
-                                return const Center(child: CircularProgressIndicator());
+                              if (scanSnap.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const Center(
+                                  child: CircularProgressIndicator(),
+                                );
                               }
 
                               if (scanGroups.isEmpty) {
@@ -340,74 +424,105 @@ class _DashboardHomeState extends State<DashboardHome>
                                     const SizedBox(height: 12),
                                     Text(
                                       'Browse and join a group first to make a payment.',
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: theme.colorScheme.onSurfaceVariant,
-                                      ),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: theme
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
                                     ),
                                   ],
                                 );
                               }
 
                               return ConstrainedBox(
-                                constraints: const BoxConstraints(maxHeight: 320),
+                                constraints: const BoxConstraints(
+                                  maxHeight: 320,
+                                ),
                                 child: ListView.separated(
                                   shrinkWrap: true,
                                   itemCount: scanGroups.length,
-                                  separatorBuilder: (_, __) => const Divider(height: 1),
+                                  separatorBuilder: (_, __) =>
+                                      const Divider(height: 1),
                                   itemBuilder: (context, index) {
                                     final g = scanGroups[index];
                                     return ListTile(
-                                      title: Text(g['name']?.toString() ?? 'Untitled Equb'),
+                                      title: Text(
+                                        g['name']?.toString() ??
+                                            'Untitled Equb',
+                                      ),
                                       trailing: const Icon(Icons.chevron_right),
                                       onTap: () {
                                         selectedEqubId = g['id'] as String?;
-                                        selectedEqubName = g['name']?.toString();
+                                        selectedEqubName = g['name']
+                                            ?.toString();
                                         Navigator.of(dialogContext).pop();
                                         showDialog(
                                           context: rootContext,
                                           builder: (methodContext) {
-        return AlertDialog(
+                                            return AlertDialog(
                                               title: Text(
                                                 'Select Payment Method',
-                                                style: theme.textTheme.titleLarge,
+                                                style:
+                                                    theme.textTheme.titleLarge,
                                               ),
                                               content: Column(
                                                 mainAxisSize: MainAxisSize.min,
-                                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.stretch,
                                                 children: [
                                                   ElevatedButton.icon(
                                                     onPressed: () {
-                                                      Navigator.of(methodContext).pop();
+                                                      Navigator.of(
+                                                        methodContext,
+                                                      ).pop();
                                                       Navigator.pushNamed(
                                                         rootContext,
-                                                        AppRoutes.paymentProcessing,
+                                                        AppRoutes
+                                                            .paymentProcessing,
                                                         arguments: {
-                                                          'equbId': selectedEqubId,
-                                                          'equbName': selectedEqubName,
+                                                          'equbId':
+                                                              selectedEqubId,
+                                                          'equbName':
+                                                              selectedEqubName,
                                                           'method': 'Chapa',
-                                                          'chapaPublicKey': PaymentService.chapaPublicKey,
+                                                          'chapaPublicKey':
+                                                              PaymentService
+                                                                  .chapaPublicKey,
                                                         },
                                                       );
                                                     },
-                                                    icon: const Icon(Icons.payment),
+                                                    icon: const Icon(
+                                                      Icons.payment,
+                                                    ),
                                                     label: const Text('Chapa'),
                                                   ),
                                                   const SizedBox(height: 8),
                                                   OutlinedButton.icon(
                                                     onPressed: () {
-                                                      Navigator.of(methodContext).pop();
+                                                      Navigator.of(
+                                                        methodContext,
+                                                      ).pop();
                                                       Navigator.pushNamed(
                                                         rootContext,
-                                                        AppRoutes.paymentProcessing,
+                                                        AppRoutes
+                                                            .paymentProcessing,
                                                         arguments: {
-                                                          'equbId': selectedEqubId,
-                                                          'equbName': selectedEqubName,
-                                                          'method': 'Screenshot',
+                                                          'equbId':
+                                                              selectedEqubId,
+                                                          'equbName':
+                                                              selectedEqubName,
+                                                          'method':
+                                                              'Screenshot',
                                                         },
                                                       );
                                                     },
-                                                    icon: const Icon(Icons.image),
-                                                    label: const Text('Screenshot'),
+                                                    icon: const Icon(
+                                                      Icons.image,
+                                                    ),
+                                                    label: const Text(
+                                                      'Screenshot',
+                                                    ),
                                                   ),
                                                 ],
                                               ),
@@ -428,8 +543,9 @@ class _DashboardHomeState extends State<DashboardHome>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-            l10n?.selectPaymentMethod ?? 'Select an Equb group to make a payment.',
-            style: theme.textTheme.bodyMedium,
+                              l10n?.selectPaymentMethod ??
+                                  'Select an Equb group to make a payment.',
+                              style: theme.textTheme.bodyMedium,
                             ),
                             const SizedBox(height: 16),
                             ConstrainedBox(
@@ -437,11 +553,14 @@ class _DashboardHomeState extends State<DashboardHome>
                               child: ListView.separated(
                                 shrinkWrap: true,
                                 itemCount: groups.length,
-                                separatorBuilder: (_, __) => const Divider(height: 1),
+                                separatorBuilder: (_, __) =>
+                                    const Divider(height: 1),
                                 itemBuilder: (context, index) {
                                   final g = groups[index];
                                   return ListTile(
-                                    title: Text(g['name']?.toString() ?? 'Untitled Equb'),
+                                    title: Text(
+                                      g['name']?.toString() ?? 'Untitled Equb',
+                                    ),
                                     trailing: const Icon(Icons.chevron_right),
                                     onTap: () {
                                       selectedEqubId = g['id'] as String?;
@@ -457,41 +576,58 @@ class _DashboardHomeState extends State<DashboardHome>
                                             ),
                                             content: Column(
                                               mainAxisSize: MainAxisSize.min,
-                                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.stretch,
                                               children: [
                                                 ElevatedButton.icon(
                                                   onPressed: () {
-                                                    Navigator.of(methodContext).pop();
+                                                    Navigator.of(
+                                                      methodContext,
+                                                    ).pop();
                                                     Navigator.pushNamed(
                                                       rootContext,
-                                                      AppRoutes.paymentProcessing,
+                                                      AppRoutes
+                                                          .paymentProcessing,
                                                       arguments: {
-                                                        'equbId': selectedEqubId,
-                                                        'equbName': selectedEqubName,
+                                                        'equbId':
+                                                            selectedEqubId,
+                                                        'equbName':
+                                                            selectedEqubName,
                                                         'method': 'Chapa',
-                                                        'chapaPublicKey': PaymentService.chapaPublicKey,
+                                                        'chapaPublicKey':
+                                                            PaymentService
+                                                                .chapaPublicKey,
                                                       },
                                                     );
                                                   },
-                                                  icon: const Icon(Icons.payment),
+                                                  icon: const Icon(
+                                                    Icons.payment,
+                                                  ),
                                                   label: const Text('Chapa'),
                                                 ),
                                                 const SizedBox(height: 8),
                                                 OutlinedButton.icon(
                                                   onPressed: () {
-                                                    Navigator.of(methodContext).pop();
+                                                    Navigator.of(
+                                                      methodContext,
+                                                    ).pop();
                                                     Navigator.pushNamed(
                                                       rootContext,
-                                                      AppRoutes.paymentProcessing,
+                                                      AppRoutes
+                                                          .paymentProcessing,
                                                       arguments: {
-                                                        'equbId': selectedEqubId,
-                                                        'equbName': selectedEqubName,
+                                                        'equbId':
+                                                            selectedEqubId,
+                                                        'equbName':
+                                                            selectedEqubName,
                                                         'method': 'Screenshot',
                                                       },
                                                     );
                                                   },
                                                   icon: const Icon(Icons.image),
-                                                  label: const Text('Screenshot'),
+                                                  label: const Text(
+                                                    'Screenshot',
+                                                  ),
                                                 ),
                                               ],
                                             ),
@@ -509,9 +645,9 @@ class _DashboardHomeState extends State<DashboardHome>
                     );
                   },
                 ),
-          ),
-          actions: [
-            TextButton(
+              ),
+              actions: [
+                TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
                   child: Text(
                     l10n?.cancel ?? 'Cancel',
@@ -556,7 +692,8 @@ class _DashboardHomeState extends State<DashboardHome>
                                           'equbId': selectedEqubId,
                                           'equbName': selectedEqubName,
                                           'method': 'Chapa',
-                                          'chapaPublicKey': PaymentService.chapaPublicKey,
+                                          'chapaPublicKey':
+                                              PaymentService.chapaPublicKey,
                                         },
                                       );
                                     },
@@ -565,7 +702,7 @@ class _DashboardHomeState extends State<DashboardHome>
                                   ),
                                   const SizedBox(height: 8),
                                   OutlinedButton.icon(
-              onPressed: () {
+                                    onPressed: () {
                                       Navigator.of(methodContext).pop();
                                       Navigator.pushNamed(
                                         rootContext,
@@ -609,25 +746,8 @@ class _DashboardHomeState extends State<DashboardHome>
       stream: equbService.streamOwnedEqubsByCurrentUser(),
       builder: (context, ownedSnap) {
         final ownedDocs = (ownedSnap.data as dynamic)?.docs ?? [];
-        final owned = ownedDocs.map<Map<String, dynamic>>((doc) {
-          final d = doc.data();
-          return {
-            'id': doc.id,
-            'name': d['name'] ?? 'Untitled Equb',
-            'contributionAmount': (d['contributionAmount'] is num)
-                ? (d['contributionAmount'] as num).toDouble()
-                : 0.0,
-            'currentMembers': d['currentMembers'] ?? 0,
-            'maxMembers': d['maxMembers'] ?? 0,
-            'isOwner': true,
-          };
-        }).toList();
-
-        return StreamBuilder(
-          stream: equbService.streamEqubsWhereMember(),
-          builder: (context, memberSnap) {
-            final memberDocs = (memberSnap.data as dynamic)?.docs ?? [];
-            final joined = memberDocs.map<Map<String, dynamic>>((doc) {
+        final owned = ownedDocs
+            .map<Map<String, dynamic>>((doc) {
               final d = doc.data();
               return {
                 'id': doc.id,
@@ -637,9 +757,50 @@ class _DashboardHomeState extends State<DashboardHome>
                     : 0.0,
                 'currentMembers': d['currentMembers'] ?? 0,
                 'maxMembers': d['maxMembers'] ?? 0,
-                'isOwner': false,
+                'isOwner': true,
+                'isSystemGenerated': d['isSystemGenerated'] ?? false,
+                'isMirchayeGroup': d['isMirchayeGroup'] ?? false,
+                'ownerUid': d['ownerUid'] ?? '',
               };
-            }).toList();
+            })
+            .where((group) {
+              // Filter out system-generated groups
+              final isSystem = group['isSystemGenerated'] as bool? ?? false;
+              final isMirchaye = group['isMirchayeGroup'] as bool? ?? false;
+              final ownerUid = group['ownerUid'] as String? ?? '';
+              return !isSystem && !isMirchaye && ownerUid != 'system';
+            })
+            .toList();
+
+        return StreamBuilder(
+          stream: equbService.streamEqubsWhereMember(),
+          builder: (context, memberSnap) {
+            final memberDocs = (memberSnap.data as dynamic)?.docs ?? [];
+            final joined = memberDocs
+                .map<Map<String, dynamic>>((doc) {
+                  final d = doc.data();
+                  return {
+                    'id': doc.id,
+                    'name': d['name'] ?? 'Untitled Equb',
+                    'contributionAmount': (d['contributionAmount'] is num)
+                        ? (d['contributionAmount'] as num).toDouble()
+                        : 0.0,
+                    'currentMembers': d['currentMembers'] ?? 0,
+                    'maxMembers': d['maxMembers'] ?? 0,
+                    'isOwner': false,
+                    'isSystemGenerated': d['isSystemGenerated'] ?? false,
+                    'isMirchayeGroup': d['isMirchayeGroup'] ?? false,
+                    'ownerUid': d['ownerUid'] ?? '',
+                  };
+                })
+                .where((group) {
+                  // Filter out system-generated groups
+                  final isSystem = group['isSystemGenerated'] as bool? ?? false;
+                  final isMirchaye = group['isMirchayeGroup'] as bool? ?? false;
+                  final ownerUid = group['ownerUid'] as String? ?? '';
+                  return !isSystem && !isMirchaye && ownerUid != 'system';
+                })
+                .toList();
 
             if (ownedSnap.connectionState == ConnectionState.waiting ||
                 memberSnap.connectionState == ConnectionState.waiting) {
@@ -668,7 +829,9 @@ class _DashboardHomeState extends State<DashboardHome>
                   final g = groups[index];
                   final current = (g['currentMembers'] as int?) ?? 0;
                   final max = (g['maxMembers'] as int?) ?? 0;
-                  final progress = max > 0 ? (current / max).clamp(0.0, 1.0) : 0.0;
+                  final progress = max > 0
+                      ? (current / max).clamp(0.0, 1.0)
+                      : 0.0;
                   final isOwner = (g['isOwner'] as bool?) ?? false;
 
                   return UserStatusCard(
@@ -676,7 +839,11 @@ class _DashboardHomeState extends State<DashboardHome>
                     subtitle: isOwner
                         ? "${l10n?.owner ?? 'Owner'} • ${current}/${max} ${l10n?.members ?? 'members'}"
                         : "${l10n?.members ?? 'Member'} • ${current}/${max} ${l10n?.members ?? 'members'}",
-                    amount: ((g['contributionAmount'] as double?) ?? 0.0).toStringAsFixed(2) + ' ' + (l10n?.etb ?? 'ETB'),
+                    amount:
+                        ((g['contributionAmount'] as double?) ?? 0.0)
+                            .toStringAsFixed(2) +
+                        ' ' +
+                        (l10n?.etb ?? 'ETB'),
                     progress: progress,
                     progressColor: isOwner
                         ? theme.colorScheme.primary
@@ -740,10 +907,241 @@ class _DashboardHomeState extends State<DashboardHome>
     );
   }
 
+  Widget _buildSavedAndFavoritesSection(ThemeData theme) {
+    final userService = UserService();
+    final equbService = EqubService();
+
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 4.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Saved & Favorites',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          SizedBox(height: 1.h),
+          // Tabs: Saved / Favorites
+          DefaultTabController(
+            length: 2,
+            child: Column(
+              children: [
+                TabBar(
+                  indicatorColor: theme.colorScheme.primary,
+                  labelColor: theme.colorScheme.onPrimary,
+                  unselectedLabelColor: theme.colorScheme.onSurface,
+                  tabs: const [
+                    Tab(text: 'Saved'),
+                    Tab(text: 'Favorite'),
+                  ],
+                ),
+                SizedBox(
+                  height: 18.h,
+                  child: TabBarView(
+                    children: [
+                      // Saved tab
+                      StreamBuilder<List<String>>(
+                        stream: userService.streamSavedEqubIds(),
+                        builder: (context, snap) {
+                          if (snap.connectionState == ConnectionState.waiting) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
+                          final ids = snap.data ?? [];
+                          if (ids.isEmpty) {
+                            return Center(
+                              child: Text(
+                                'No saved equbs',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            );
+                          }
+                          return ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            padding: EdgeInsets.all(3.w),
+                            itemBuilder: (context, index) {
+                              final id = ids[index];
+                              return StreamBuilder(
+                                stream: equbService.streamEqub(id),
+                                builder: (context, equbSnap) {
+                                  if (!equbSnap.hasData)
+                                    return SizedBox(
+                                      width: 40.w,
+                                      child: const Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    );
+                                  final data =
+                                      (equbSnap.data as dynamic).data()
+                                          as Map<String, dynamic>?;
+                                  final name = data?['name'] ?? 'Untitled';
+                                  final avatar =
+                                      data?['coverImageUrl'] ??
+                                      data?['ownerPhotoUrl'] ??
+                                      'https://i.pravatar.cc/100?u=$id';
+                                  return GestureDetector(
+                                    onTap: () {
+                                      Navigator.pushNamed(
+                                        context,
+                                        AppRoutes.groupManagement,
+                                        arguments: {
+                                          'equbId': id,
+                                          'isOwner': false,
+                                        },
+                                      );
+                                    },
+                                    child: Container(
+                                      width: 40.w,
+                                      padding: EdgeInsets.all(2.w),
+                                      decoration: BoxDecoration(
+                                        color: theme.cardColor,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 20,
+                                            backgroundImage: NetworkImage(
+                                              avatar,
+                                            ),
+                                          ),
+                                          SizedBox(height: 1.h),
+                                          Text(
+                                            name.toString(),
+                                            style: theme.textTheme.bodyMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                            separatorBuilder: (_, __) => SizedBox(width: 2.w),
+                            itemCount: ids.length,
+                          );
+                        },
+                      ),
+                      // Favorites tab
+                      StreamBuilder<List<String>>(
+                        stream: userService.streamFavoriteEqubIds(),
+                        builder: (context, snap) {
+                          if (snap.connectionState == ConnectionState.waiting) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
+                          final ids = snap.data ?? [];
+                          if (ids.isEmpty) {
+                            return Center(
+                              child: Text(
+                                'No favorite equbs',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            );
+                          }
+                          return ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            padding: EdgeInsets.all(3.w),
+                            itemBuilder: (context, index) {
+                              final id = ids[index];
+                              return StreamBuilder(
+                                stream: equbService.streamEqub(id),
+                                builder: (context, equbSnap) {
+                                  if (!equbSnap.hasData)
+                                    return SizedBox(
+                                      width: 40.w,
+                                      child: const Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    );
+                                  final data =
+                                      (equbSnap.data as dynamic).data()
+                                          as Map<String, dynamic>?;
+                                  final name = data?['name'] ?? 'Untitled';
+                                  final avatar =
+                                      data?['coverImageUrl'] ??
+                                      data?['ownerPhotoUrl'] ??
+                                      'https://i.pravatar.cc/100?u=$id';
+                                  return GestureDetector(
+                                    onTap: () {
+                                      Navigator.pushNamed(
+                                        context,
+                                        AppRoutes.groupManagement,
+                                        arguments: {
+                                          'equbId': id,
+                                          'isOwner': false,
+                                        },
+                                      );
+                                    },
+                                    child: Container(
+                                      width: 40.w,
+                                      padding: EdgeInsets.all(2.w),
+                                      decoration: BoxDecoration(
+                                        color: theme.cardColor,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 20,
+                                            backgroundImage: NetworkImage(
+                                              avatar,
+                                            ),
+                                          ),
+                                          SizedBox(height: 1.h),
+                                          Text(
+                                            name.toString(),
+                                            style: theme.textTheme.bodyMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                            separatorBuilder: (_, __) => SizedBox(width: 2.w),
+                            itemCount: ids.length,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRecentActivity(ThemeData theme) {
     final l10n = AppLocalizations.of(context);
     final equbService = EqubService();
-    final userService = UserService();
 
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 4.w),
@@ -773,8 +1171,16 @@ class _DashboardHomeState extends State<DashboardHome>
 
                   final ownedDocs = ownedSnap.data?.docs ?? [];
                   final memberDocs = memberSnap.data?.docs ?? [];
-                  final allGroups = [...ownedDocs, ...memberDocs];
-                  
+
+                  // Filter out system-generated groups
+                  final allGroups = [...ownedDocs, ...memberDocs].where((doc) {
+                    final data = doc.data();
+                    final isSystem = data['isSystemGenerated'] ?? false;
+                    final isMirchaye = data['isMirchayeGroup'] ?? false;
+                    final ownerUid = data['ownerUid'] ?? '';
+                    return !isSystem && !isMirchaye && ownerUid != 'system';
+                  }).toList();
+
                   if (allGroups.isEmpty) {
                     return Container(
                       padding: EdgeInsets.all(4.w),
@@ -782,7 +1188,9 @@ class _DashboardHomeState extends State<DashboardHome>
                         color: theme.cardColor,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: theme.colorScheme.outline.withValues(alpha: 0.2),
+                          color: theme.colorScheme.outline.withValues(
+                            alpha: 0.2,
+                          ),
                         ),
                       ),
                       child: Column(
@@ -804,49 +1212,21 @@ class _DashboardHomeState extends State<DashboardHome>
                     );
                   }
 
-                  // Stream announcements from all groups
-                  return StreamBuilder(
-                    stream: equbService.streamAllGroupAnnouncements(
-                      allGroups.map((doc) => doc.id).toList(),
-                    ),
+                  final equbIds = allGroups.map((d) => d.id).toList();
+
+                  return StreamBuilder<List<Map<String, dynamic>>>(
+                    stream: equbService.streamAllGroupAnnouncements(equbIds),
                     builder: (context, announcementsSnap) {
-                      if (announcementsSnap.connectionState == ConnectionState.waiting) {
+                      if (announcementsSnap.connectionState ==
+                          ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
                       }
-
                       final announcements = announcementsSnap.data ?? [];
-                      
-                      if (announcements.isEmpty) {
-                        return Container(
-                          padding: EdgeInsets.all(4.w),
-                          decoration: BoxDecoration(
-                            color: theme.cardColor,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: theme.colorScheme.outline.withValues(alpha: 0.2),
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              CustomIconWidget(
-                                iconName: 'notifications_none',
-                                color: theme.colorScheme.onSurfaceVariant,
-                                size: 32,
-                              ),
-                              SizedBox(height: 1.h),
-                              Text(
-                                'No recent activity',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
 
                       // Limit to 5 most recent
-                      final displayAnnouncements = announcements.take(5).toList();
+                      final displayAnnouncements = announcements
+                          .take(5)
+                          .toList();
 
                       return ListView.builder(
                         shrinkWrap: true,
@@ -902,210 +1282,217 @@ class _DashboardHomeState extends State<DashboardHome>
           }
         }
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        elevation: 10,
-        titleSpacing: 3,
-        title: Row(
-          children: [
-            Icon(
-              Icons.account_balance_wallet,
-              color: theme.colorScheme.onSurface,
-              size: 32,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                l10n?.appTitle ?? 'Mirchaye Equb',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
+        return Scaffold(
+          backgroundColor: theme.scaffoldBackgroundColor,
+          appBar: AppBar(
+            backgroundColor: theme.scaffoldBackgroundColor,
+            elevation: 10,
+            titleSpacing: 3,
+            title: Row(
+              children: [
+                Icon(
+                  Icons.account_balance_wallet,
                   color: theme.colorScheme.onSurface,
+                  size: 32,
                 ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          StreamBuilder<int>(
-            stream: NotificationService().streamUnreadCount(),
-            builder: (context, snapshot) {
-              final unreadCount = snapshot.data ?? 0;
-              return Stack(
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, AppRoutes.notificationsScreen);
-                    },
-                    icon: CustomIconWidget(
-                      iconName: 'notifications',
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    l10n?.appTitle ?? 'Mirchaye Equb',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
                       color: theme.colorScheme.onSurface,
-                      size: 24,
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  if (unreadCount > 0)
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(10),
+                ),
+              ],
+            ),
+            actions: [
+              StreamBuilder<int>(
+                stream: NotificationService().streamUnreadCount(),
+                builder: (context, snapshot) {
+                  final unreadCount = snapshot.data ?? 0;
+                  return Stack(
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          Navigator.pushNamed(
+                            context,
+                            AppRoutes.notificationsScreen,
+                          );
+                        },
+                        icon: CustomIconWidget(
+                          iconName: 'notifications',
+                          color: theme.colorScheme.onSurface,
+                          size: 24,
                         ),
-                        constraints: const BoxConstraints(
-                          minWidth: 16,
-                          minHeight: 16,
+                      ),
+                      if (unreadCount > 0)
+                        Positioned(
+                          right: 8,
+                          top: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
+                            ),
+                            child: Text(
+                              unreadCount > 99 ? '99+' : '$unreadCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
                         ),
-                        child: Text(
-                          unreadCount > 99 ? '99+' : '$unreadCount',
+                    ],
+                  );
+                },
+              ),
+              IconButton(
+                onPressed: _navigateToProfile,
+                icon: CircleAvatar(
+                  radius: 16,
+                  backgroundColor: theme.colorScheme.primary,
+                  backgroundImage: photoUrl != null
+                      ? NetworkImage(photoUrl)
+                      : null,
+                  child: photoUrl == null
+                      ? Text(
+                          userData["name"].toString()[0].toUpperCase(),
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 10,
                             fontWeight: FontWeight.bold,
+                            fontSize: 14,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-          IconButton(
-            onPressed: _navigateToProfile,
-            icon: CircleAvatar(
-              radius: 16,
-              backgroundColor: theme.colorScheme.primary,
-              backgroundImage: photoUrl != null 
-                  ? NetworkImage(photoUrl!)
-                  : null,
-              child: photoUrl == null 
-                  ? Text(
-                      userData["name"].toString()[0].toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    )
-                  : null,
-            ),
-          ),
-          IconButton(
-            onPressed: () async {
-              // Show confirmation dialog
-              final shouldLogout = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Logout'),
-                  content: const Text('Are you sure you want to logout?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Logout'),
-                    ),
-                  ],
+                        )
+                      : null,
                 ),
-              );
+              ),
+              IconButton(
+                onPressed: () async {
+                  // Show confirmation dialog
+                  final shouldLogout = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Logout'),
+                      content: const Text('Are you sure you want to logout?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Logout'),
+                        ),
+                      ],
+                    ),
+                  );
 
-              if (shouldLogout == true) {
-                print('🚪 User manually logged out');
-                await FirebaseAuth.instance.signOut();
-                // AuthGate will automatically redirect to login screen
-              }
-            },
-            icon: Icon(
-              Icons.logout,
-              color: theme.colorScheme.error,
-              size: 24,
-            ),
-            tooltip: 'Logout',
-          ),
-          const SizedBox(width: 10),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _handleRefresh,
-        color: theme.colorScheme.primary,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(height: 2.h),
-              _buildEqubCards(theme),
-              SizedBox(height: 2.h),
-              _buildQuickActions(theme),
-              SizedBox(height: 2.h),
-              _buildRecentActivity(theme),
-              SizedBox(height: 10.h),
+                  if (shouldLogout == true) {
+                    print('🚪 User manually logged out');
+                    await FirebaseAuth.instance.signOut();
+                    // AuthGate will automatically redirect to login screen
+                  }
+                },
+                icon: Icon(
+                  Icons.logout,
+                  color: theme.colorScheme.error,
+                  size: 24,
+                ),
+                tooltip: 'Logout',
+              ),
+              const SizedBox(width: 10),
             ],
           ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.pushNamed(context, AppRoutes.groupsScreen),
-        backgroundColor: theme.colorScheme.primary,
-        child: Icon(Icons.group, color: Colors.white, size: 24),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onBottomNavTap,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: theme.bottomNavigationBarTheme.backgroundColor,
-        selectedItemColor: theme.bottomNavigationBarTheme.selectedItemColor,
-        unselectedItemColor: theme.bottomNavigationBarTheme.unselectedItemColor,
-        items: [
-          BottomNavigationBarItem(
-            icon: CustomIconWidget(
-              iconName: 'home',
-              color: _selectedIndex == 0
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurfaceVariant,
-              size: 24,
+          body: RefreshIndicator(
+            onRefresh: _handleRefresh,
+            color: theme.colorScheme.primary,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: 2.h),
+                  _buildEqubCards(theme),
+                  SizedBox(height: 2.h),
+                  _buildQuickActions(theme),
+                  SizedBox(height: 2.h),
+                  _buildSavedAndFavoritesSection(theme),
+                  SizedBox(height: 2.h),
+                  _buildRecentActivity(theme),
+                  SizedBox(height: 10.h),
+                ],
+              ),
             ),
-            label: l10n?.home ?? 'Home',
           ),
-          BottomNavigationBarItem(
-            icon: CustomIconWidget(
-              iconName: 'search',
-              color: _selectedIndex == 1
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurfaceVariant,
-              size: 24,
-            ),
-            label: l10n?.browse ?? 'Browse',
+          floatingActionButton: FloatingActionButton(
+            onPressed: () =>
+                Navigator.pushNamed(context, AppRoutes.groupsScreen),
+            backgroundColor: theme.colorScheme.primary,
+            child: Icon(Icons.group, color: Colors.white, size: 24),
           ),
-          BottomNavigationBarItem(
-            icon: CustomIconWidget(
-              iconName: 'payment',
-              color: _selectedIndex == 2
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurfaceVariant,
-              size: 24,
-            ),
-            label: l10n?.payments ?? 'Payments',
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            onTap: _onBottomNavTap,
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: theme.bottomNavigationBarTheme.backgroundColor,
+            selectedItemColor: theme.bottomNavigationBarTheme.selectedItemColor,
+            unselectedItemColor:
+                theme.bottomNavigationBarTheme.unselectedItemColor,
+            items: [
+              BottomNavigationBarItem(
+                icon: CustomIconWidget(
+                  iconName: 'home',
+                  color: _selectedIndex == 0
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                  size: 24,
+                ),
+                label: l10n?.home ?? 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: CustomIconWidget(
+                  iconName: 'search',
+                  color: _selectedIndex == 1
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                  size: 24,
+                ),
+                label: l10n?.browse ?? 'Browse',
+              ),
+              BottomNavigationBarItem(
+                icon: CustomIconWidget(
+                  iconName: 'payment',
+                  color: _selectedIndex == 2
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                  size: 24,
+                ),
+                label: l10n?.payments ?? 'Payments',
+              ),
+              BottomNavigationBarItem(
+                icon: CustomIconWidget(
+                  iconName: 'person',
+                  color: _selectedIndex == 3
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                  size: 24,
+                ),
+                label: l10n?.profile ?? 'Profile',
+              ),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: CustomIconWidget(
-              iconName: 'person',
-              color: _selectedIndex == 3
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurfaceVariant,
-              size: 24,
-            ),
-            label: l10n?.profile ?? 'Profile',
-          ),
-        ],
-      ),
-    );
+        );
       },
     );
   }

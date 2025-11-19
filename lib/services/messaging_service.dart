@@ -1,6 +1,124 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart' show Color;
+import 'dart:io' show Platform;
+
+// Initialize local notifications plugin
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+/// Initialize local notifications
+Future<void> initializeLocalNotifications() async {
+  if (kIsWeb) return; // Not supported on web
+
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/icon');
+
+  const DarwinInitializationSettings initializationSettingsIOS =
+      DarwinInitializationSettings(
+    requestAlertPermission: true,
+    requestBadgePermission: true,
+    requestSoundPermission: true,
+  );
+
+  const InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+    iOS: initializationSettingsIOS,
+  );
+
+  await flutterLocalNotificationsPlugin.initialize(
+    initializationSettings,
+  );
+
+  // Create Android notification channel with heads-up support
+  if (Platform.isAndroid) {
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'notifications_channel', // Same as in AndroidManifest.xml
+      'Notifications',
+      description: 'Notifications for Equb app',
+      importance: Importance.max, // MAX for heads-up notifications
+      playSound: true,
+      enableVibration: true,
+      enableLights: true,
+      showBadge: true,
+    );
+
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+  }
+}
+
+/// Show local notification (can be called from anywhere)
+/// Supports: Push notifications, Heads-up (overlay), Lock screen, Banner, Notification center
+Future<void> showLocalNotification(
+  String title,
+  String body,
+  Map<String, dynamic> data,
+) async {
+  if (kIsWeb) return; // Not supported on web
+
+  // Android notification details with full support for:
+  // - Heads-up notifications (overlay at top) - Importance.max + Priority.max
+  // - Lock screen notifications - Visibility.public
+  // - Banner notifications - Automatic with high importance
+  // - Notification center - Automatic with all notifications
+  final AndroidNotificationDetails androidPlatformChannelSpecifics =
+      AndroidNotificationDetails(
+    'notifications_channel', // Same channel ID as in AndroidManifest.xml
+    'Notifications',
+    channelDescription: 'Notifications for Equb app',
+    importance: Importance.max, // MAX for heads-up notifications (overlay at top)
+    priority: Priority.max, // MAX priority for heads-up notifications
+    showWhen: true,
+    playSound: true,
+    enableVibration: true,
+    enableLights: true,
+    ledColor: const Color(0xFF2196F3), // Blue LED light
+    ledOnMs: 1000,
+    ledOffMs: 500,
+    visibility: NotificationVisibility.public, // Show on lock screen
+    ticker: '$title: $body', // Text shown in status bar
+    ongoing: false,
+    autoCancel: true,
+    channelShowBadge: true,
+    fullScreenIntent: false, // Set to true for critical notifications
+    styleInformation: BigTextStyleInformation(
+      body, // Show full text in expanded notification
+      contentTitle: title,
+      htmlFormatBigText: false,
+      summaryText: '',
+    ),
+  );
+
+  const DarwinNotificationDetails iOSPlatformChannelSpecifics =
+      DarwinNotificationDetails(
+    presentAlert: true, // Show alert (heads-up)
+    presentBadge: true, // Show badge
+    presentSound: true, // Play sound
+    interruptionLevel: InterruptionLevel.active, // Heads-up notification
+  );
+
+  final NotificationDetails platformChannelSpecifics = NotificationDetails(
+    android: androidPlatformChannelSpecifics,
+    iOS: iOSPlatformChannelSpecifics,
+  );
+
+  // Generate unique notification ID
+  final notificationId = DateTime.now().millisecondsSinceEpoch.remainder(100000);
+
+  await flutterLocalNotificationsPlugin.show(
+    notificationId,
+    title,
+    body,
+    platformChannelSpecifics,
+    payload: data.toString(),
+  );
+}
 
 /// Top-level function to handle background messages
 @pragma('vm:entry-point')
@@ -8,6 +126,18 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('📱 Background message received: ${message.messageId}');
   print('📱 Title: ${message.notification?.title}');
   print('📱 Body: ${message.notification?.body}');
+  
+  // Initialize local notifications in background handler
+  await initializeLocalNotifications();
+  
+  // Show notification even when app is in background
+  if (message.notification != null) {
+    await showLocalNotification(
+      message.notification!.title ?? 'Notification',
+      message.notification!.body ?? '',
+      message.data,
+    );
+  }
 }
 
 class MessagingService {
@@ -21,8 +151,16 @@ class MessagingService {
 
   String? _fcmToken;
 
+  /// Initialize local notifications
+  Future<void> _initializeLocalNotifications() async {
+    await initializeLocalNotifications();
+  }
+
   /// Initialize FCM and request permissions
   Future<void> initialize() async {
+    // Initialize local notifications first
+    await _initializeLocalNotifications();
+    
     // Request notification permissions
     NotificationSettings settings = await _messaging.requestPermission(
       alert: true,
@@ -97,9 +235,15 @@ class MessagingService {
     print('📱 Title: ${message.notification?.title}');
     print('📱 Body: ${message.notification?.body}');
     
-    // FCM will automatically show notifications even when app is in foreground
-    // if the notification payload includes both 'notification' and 'data' fields
-    // We don't need to manually show local notifications in most cases
+    // Show local notification even when app is in foreground
+    // This ensures notifications appear even when using other apps
+    if (message.notification != null) {
+      await showLocalNotification(
+        message.notification!.title ?? 'Notification',
+        message.notification!.body ?? '',
+        message.data,
+      );
+    }
   }
 
   /// Handle when user taps on a notification

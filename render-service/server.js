@@ -14,14 +14,39 @@ let serviceAccount;
 
 console.log('Starting Firebase Admin SDK initialization...');
 console.log('FIREBASE_SERVICE_ACCOUNT is set:', !!process.env.FIREBASE_SERVICE_ACCOUNT);
+console.log('FIREBASE_SERVICE_ACCOUNT_BASE64 is set:', !!process.env.FIREBASE_SERVICE_ACCOUNT_BASE64);
 
-if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-  const envValue = process.env.FIREBASE_SERVICE_ACCOUNT;
+// Option 1: Use Base64 encoded value (recommended for multiline JSON)
+if (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
+  console.log('Using FIREBASE_SERVICE_ACCOUNT_BASE64...');
+  try {
+    const decoded = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf-8');
+    console.log('Base64 decoded successfully, attempting JSON parse...');
+    serviceAccount = JSON.parse(decoded);
+    console.log('✅ Successfully parsed FIREBASE_SERVICE_ACCOUNT_BASE64');
+  } catch (err) {
+    console.error('❌ Error parsing FIREBASE_SERVICE_ACCOUNT_BASE64:');
+    console.error('Error:', err.message);
+    console.error('');
+    console.error('⚠️  TROUBLESHOOTING:');
+    console.error('1. Make sure your Base64 string is valid');
+    console.error('2. Generate it using: cat serviceAccountKey.json | base64');
+    console.error('3. Or use an online Base64 encoder');
+    process.exit(1);
+  }
+} 
+// Option 2: Use direct JSON (must have escaped newlines)
+else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  const envValue = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
   console.log(`FIREBASE_SERVICE_ACCOUNT length: ${envValue.length} characters`);
   console.log(`First 50 characters: ${envValue.substring(0, 50)}...`);
   
-  // Check if it looks like base64 first (contains non-JSON characters)
-  if (!envValue.trim().startsWith('{')) {
+  // Normalize newlines: replace real newlines with escaped \n in private_key
+  // This handles cases where the JSON was pasted with actual line breaks
+  let normalizedJson = envValue;
+  
+  // If it doesn't start with {, try base64 decode
+  if (!envValue.startsWith('{')) {
     console.log('Value does not start with "{", trying base64 decode...');
     try {
       const decoded = Buffer.from(envValue, 'base64').toString('utf-8');
@@ -29,56 +54,53 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT) {
       serviceAccount = JSON.parse(decoded);
       console.log('✅ Successfully parsed FIREBASE_SERVICE_ACCOUNT from base64');
     } catch (base64Err) {
-      console.error('❌ Failed to decode as base64, trying direct JSON parse...');
-      try {
-        serviceAccount = JSON.parse(envValue);
-        console.log('✅ Successfully parsed FIREBASE_SERVICE_ACCOUNT as JSON');
-      } catch (jsonErr) {
-        console.error('❌ Error parsing FIREBASE_SERVICE_ACCOUNT environment variable:');
-        console.error('Base64 decode error:', base64Err.message);
-        console.error('JSON parse error:', jsonErr.message);
-        console.error('Value preview (first 100 chars):', envValue.substring(0, 100));
-        console.error('');
-        console.error('⚠️  TROUBLESHOOTING:');
-        console.error('1. Make sure you copied the ENTIRE JSON from Firebase Console');
-        console.error('2. The JSON should start with "{" and end with "}"');
-        console.error('3. Remove any extra spaces or line breaks at the start/end');
-        console.error('4. In Render, paste it as a single-line JSON (Render will handle formatting)');
-        console.error('5. Do NOT wrap it in quotes - paste the JSON directly');
-        process.exit(1);
-      }
+      console.error('❌ Failed to decode as base64');
+      console.error('Error:', base64Err.message);
+      console.error('');
+      console.error('⚠️  Try using FIREBASE_SERVICE_ACCOUNT_BASE64 instead (see Option 1 above)');
+      process.exit(1);
     }
   } else {
-    // Try direct JSON parse first
+    // Try parsing as JSON directly
     try {
       console.log('Attempting to parse FIREBASE_SERVICE_ACCOUNT as JSON...');
-      serviceAccount = JSON.parse(envValue);
+      
+      // Handle real newlines in private_key field by escaping them
+      // This is a common issue when copying JSON with actual line breaks
+      if (envValue.includes('\n') || envValue.includes('\r')) {
+        console.log('Detected real line breaks, normalizing...');
+        // Replace actual newlines in the private_key value with escaped \n
+        normalizedJson = envValue
+          .replace(/-----BEGIN PRIVATE KEY-----[\r\n]+/g, '-----BEGIN PRIVATE KEY-----\\n')
+          .replace(/[\r\n]+-----END PRIVATE KEY-----/g, '\\n-----END PRIVATE KEY-----')
+          .replace(/(?<!\\n)[\r\n]+(?!-----)/g, '\\n');
+      }
+      
+      serviceAccount = JSON.parse(normalizedJson);
       console.log('✅ Successfully parsed FIREBASE_SERVICE_ACCOUNT as JSON');
     } catch (e) {
-      console.log('Failed to parse as JSON, trying base64 decode...');
-      try {
-        const decoded = Buffer.from(envValue, 'base64').toString('utf-8');
-        serviceAccount = JSON.parse(decoded);
-        console.log('✅ Successfully parsed FIREBASE_SERVICE_ACCOUNT from base64');
-      } catch (err) {
-        console.error('❌ Error parsing FIREBASE_SERVICE_ACCOUNT environment variable:');
-        console.error('JSON parse error:', e.message);
-        console.error('Base64 decode error:', err.message);
-        console.error('Value preview (first 100 chars):', envValue.substring(0, 100));
-        console.error('');
-        console.error('⚠️  TROUBLESHOOTING:');
-        console.error('1. Make sure you copied the ENTIRE JSON from Firebase Console');
-        console.error('2. The JSON should start with "{" and end with "}"');
-        console.error('3. Remove any extra spaces or line breaks at the start/end');
-        console.error('4. In Render, paste it as a single-line JSON (Render will handle formatting)');
-        console.error('5. Do NOT wrap it in quotes - paste the JSON directly');
-        process.exit(1);
-      }
+      console.error('❌ Error parsing FIREBASE_SERVICE_ACCOUNT as JSON:');
+      console.error('Error:', e.message);
+      console.error('Value preview (first 100 chars):', envValue.substring(0, 100));
+      console.error('');
+      console.error('⚠️  TROUBLESHOOTING:');
+      console.error('Option 1 (Recommended): Use Base64 encoding');
+      console.error('  1. Generate Base64: cat serviceAccountKey.json | base64');
+      console.error('  2. Set FIREBASE_SERVICE_ACCOUNT_BASE64 in Render with the Base64 string');
+      console.error('');
+      console.error('Option 2: Fix the JSON newlines');
+      console.error('  1. Replace all real line breaks in private_key with literal \\n');
+      console.error('  2. The private_key should look like: "-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n"');
+      console.error('  3. Make sure the JSON is valid (use a JSON validator)');
+      process.exit(1);
     }
   }
 } else {
-  console.error('❌ FIREBASE_SERVICE_ACCOUNT environment variable is not set.');
-  console.error('Please set this in Render Dashboard → Environment → Add Environment Variable');
+  console.error('❌ Neither FIREBASE_SERVICE_ACCOUNT nor FIREBASE_SERVICE_ACCOUNT_BASE64 is set.');
+  console.error('');
+  console.error('Please set one of these in Render Dashboard → Environment:');
+  console.error('  1. FIREBASE_SERVICE_ACCOUNT_BASE64 (recommended) - Base64 encoded JSON');
+  console.error('  2. FIREBASE_SERVICE_ACCOUNT - Direct JSON with escaped \\n in private_key');
   process.exit(1);
 }
 
@@ -125,11 +147,15 @@ app.post('/api/send-notification', async (req, res) => {
       click_action: 'FLUTTER_NOTIFICATION_CLICK',
     },
     android: {
-      priority: 'high',
+      priority: 'high', // High priority for heads-up notifications
       notification: {
         channelId: 'notifications_channel',
         sound: 'default',
-        priority: 'high',
+        priority: 'high', // High priority for heads-up
+        visibility: 'public', // Show on lock screen
+        defaultSound: true,
+        defaultVibrateTimings: true,
+        defaultLightSettings: true,
       },
     },
     apns: {

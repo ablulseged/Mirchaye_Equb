@@ -7,12 +7,14 @@ class GroupCard extends StatelessWidget {
   final Map<String, dynamic> group;
   final VoidCallback onTap;
   final VoidCallback onFavorite;
+  final VoidCallback? onSaved;
 
   const GroupCard({
     Key? key,
     required this.group,
     required this.onTap,
     required this.onFavorite,
+    this.onSaved,
   }) : super(key: key);
 
   @override
@@ -54,11 +56,19 @@ class GroupCard extends StatelessWidget {
                   },
                   child: CircleAvatar(
                     radius: 20,
-                    backgroundImage: (group["adminAvatar"] != null && group["adminAvatar"].toString().isNotEmpty)
+                    backgroundImage:
+                        (group["adminAvatar"] != null &&
+                            group["adminAvatar"].toString().isNotEmpty)
                         ? NetworkImage(group["adminAvatar"])
                         : null,
-                    child: (group["adminAvatar"] == null || group["adminAvatar"].toString().isEmpty)
-                        ? Text((group["adminName"] ?? 'A').substring(0, 1).toUpperCase())
+                    child:
+                        (group["adminAvatar"] == null ||
+                            group["adminAvatar"].toString().isEmpty)
+                        ? Text(
+                            (group["adminName"] ?? 'A')
+                                .substring(0, 1)
+                                .toUpperCase(),
+                          )
                         : null,
                   ),
                 ),
@@ -69,8 +79,9 @@ class GroupCard extends StatelessWidget {
                     children: [
                       Text(
                         group["adminName"],
-                        style: Theme.of(context).textTheme.bodyMedium
-                            ?.copyWith(fontWeight: FontWeight.w600),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                       SizedBox(height: 0.5.h),
@@ -104,8 +115,9 @@ class GroupCard extends StatelessWidget {
                   ),
                 ),
                 SizedBox(width: 2.w),
+                // Saved (bookmark)
                 GestureDetector(
-                  onTap: onFavorite,
+                  onTap: onSaved,
                   child: CustomIconWidget(
                     iconName: group["isBookmarked"]
                         ? 'bookmark'
@@ -114,6 +126,20 @@ class GroupCard extends StatelessWidget {
                         ? Theme.of(context).colorScheme.primary
                         : Theme.of(context).colorScheme.onSurfaceVariant,
                     size: 24,
+                  ),
+                ),
+                SizedBox(width: 2.w),
+                // Favorite (heart)
+                GestureDetector(
+                  onTap: onFavorite,
+                  child: CustomIconWidget(
+                    iconName: group["isFavorited"] == true
+                        ? 'favorite'
+                        : 'favorite_border',
+                    color: group["isFavorited"] == true
+                        ? Colors.red
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                    size: 22,
                   ),
                 ),
               ],
@@ -200,8 +226,9 @@ class GroupCard extends StatelessWidget {
                 SizedBox(height: 1.h),
                 LinearProgressIndicator(
                   value: progress,
-                  backgroundColor: Theme.of(context).colorScheme.outline
-                      .withValues(alpha: 0.2),
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.outline.withValues(alpha: 0.2),
                   valueColor: AlwaysStoppedAnimation<Color>(
                     progress < 0.8
                         ? AppTheme.getSuccessColorFromContext(context)
@@ -223,18 +250,16 @@ class GroupCard extends StatelessWidget {
                     children: [
                       Text(
                         'Next Cycle Starts',
-                        style: Theme.of(context).textTheme.bodySmall
-                            ?.copyWith(
-                              color: AppTheme
-                                  .lightTheme
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color:
+                              AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
                       Text(
                         group["nextCycleStart"],
-                        style: Theme.of(context).textTheme.bodyMedium
-                            ?.copyWith(fontWeight: FontWeight.w600),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -256,11 +281,10 @@ class GroupCard extends StatelessWidget {
                       SizedBox(width: 1.w),
                       Text(
                         'View Details',
-                        style: Theme.of(context).textTheme.bodySmall
-                            ?.copyWith(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -273,7 +297,12 @@ class GroupCard extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoColumn(BuildContext context, String title, String value, String iconName) {
+  Widget _buildInfoColumn(
+    BuildContext context,
+    String title,
+    String value,
+    String iconName,
+  ) {
     return Column(
       children: [
         Container(
@@ -299,9 +328,9 @@ class GroupCard extends StatelessWidget {
         SizedBox(height: 0.5.h),
         Text(
           value,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
           textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,

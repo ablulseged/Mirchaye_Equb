@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../core/app_export.dart';
 import './widgets/empty_state_widget.dart';
@@ -28,36 +29,7 @@ class _GroupsScreenState extends State<GroupsScreen>
   // Joined Equbs - now populated from Firestore
   final List<Map<String, dynamic>> _joinedEqubs = [];
 
-  final List<Map<String, dynamic>> _systemGroups = [
-    {
-      'id': '7',
-      'name': 'Auto-Generated Group #247',
-      'description':
-          'System created group when member limit reached in popular category',
-      'amount': 4000.0,
-      'maxMembers': 10,
-      'currentMembers': 10,
-      'status': 'Active',
-      'frequency': 'Monthly',
-      'createdAt': DateTime.now().subtract(const Duration(days: 10)),
-      'isOwner': false,
-      'isSystemGenerated': true,
-    },
-    {
-      'id': '8',
-      'name': 'Auto-Generated Group #248',
-      'description':
-          'Automatically created for overflow members from high-demand groups',
-      'amount': 6000.0,
-      'maxMembers': 12,
-      'currentMembers': 7,
-      'status': 'Active',
-      'frequency': 'Monthly',
-      'createdAt': DateTime.now().subtract(const Duration(days: 5)),
-      'isOwner': false,
-      'isSystemGenerated': true,
-    },
-  ];
+  final EqubService _equbService = EqubService();
 
   // Constants for maximum limits
   static const int MAX_MY_EQUBS = 1;
@@ -91,6 +63,11 @@ class _GroupsScreenState extends State<GroupsScreen>
 
   bool get _canCreateNewGroup => true; // compute from stream in UI if needed
   bool get _canJoinNewGroup => true;
+
+  String _capitalize(String text) {
+    if (text.isEmpty) return text;
+    return '${text[0].toUpperCase()}${text.substring(1)}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -195,7 +172,16 @@ class _GroupsScreenState extends State<GroupsScreen>
             'createdAt': data['createdAt']?.toDate() ?? DateTime.now(),
             'isOwner': true,
             'owner': data['ownerEmail'] ?? '',
+            'isSystemGenerated': data['isSystemGenerated'] ?? false,
+            'isMirchayeGroup': data['isMirchayeGroup'] ?? false,
+            'ownerUid': data['ownerUid'] ?? '',
           };
+        }).where((group) {
+          // Filter out system-generated groups
+          final isSystem = group['isSystemGenerated'] as bool? ?? false;
+          final isMirchaye = group['isMirchayeGroup'] as bool? ?? false;
+          final ownerUid = group['ownerUid'] as String? ?? '';
+          return !isSystem && !isMirchaye && ownerUid != 'system';
         }).toList();
 
         final filteredGroups = _getFilteredGroups(groups);
@@ -252,7 +238,16 @@ class _GroupsScreenState extends State<GroupsScreen>
             'createdAt': data['createdAt']?.toDate() ?? DateTime.now(),
             'isOwner': (data['ownerUid'] == FirebaseAuth.instance.currentUser?.uid),
             'owner': data['ownerEmail'] ?? '',
+            'isSystemGenerated': data['isSystemGenerated'] ?? false,
+            'isMirchayeGroup': data['isMirchayeGroup'] ?? false,
+            'ownerUid': data['ownerUid'] ?? '',
           };
+        }).where((group) {
+          // Filter out system-generated groups
+          final isSystem = group['isSystemGenerated'] as bool? ?? false;
+          final isMirchaye = group['isMirchayeGroup'] as bool? ?? false;
+          final ownerUid = group['ownerUid'] as String? ?? '';
+          return !isSystem && !isMirchaye && ownerUid != 'system';
         }).toList();
 
         // If primary query returns results, show them
@@ -296,7 +291,16 @@ class _GroupsScreenState extends State<GroupsScreen>
                 'createdAt': data['createdAt']?.toDate() ?? DateTime.now(),
                 'isOwner': (data['ownerUid'] == FirebaseAuth.instance.currentUser?.uid),
                 'owner': data['ownerEmail'] ?? '',
+                'isSystemGenerated': data['isSystemGenerated'] ?? false,
+                'isMirchayeGroup': data['isMirchayeGroup'] ?? false,
+                'ownerUid': data['ownerUid'] ?? '',
               };
+            }).where((group) {
+              // Filter out system-generated groups
+              final isSystem = group['isSystemGenerated'] as bool? ?? false;
+              final isMirchaye = group['isMirchayeGroup'] as bool? ?? false;
+              final ownerUid = group['ownerUid'] as String? ?? '';
+              return !isSystem && !isMirchaye && ownerUid != 'system';
             }).toList();
 
             final filteredGroups = _getFilteredGroups(groups);
@@ -332,52 +336,36 @@ class _GroupsScreenState extends State<GroupsScreen>
 
   Widget _buildSystemGroupsTab() {
     final theme = Theme.of(context);
-    final filteredGroups = _getFilteredGroups(_systemGroups);
-
-    if (filteredGroups.isEmpty && _searchQuery.isEmpty) {
-      return EmptyStateWidget(
-        title: 'No System Groups',
-        description:
-            'System-generated groups will appear here when member limits are reached in popular categories.',
-        buttonText: 'Refresh',
-        iconName: 'autorenew',
-        onButtonPressed: () {
-          setState(() {});
-        },
-      );
-    }
-
-    if (filteredGroups.isEmpty && _searchQuery.isNotEmpty) {
-      return EmptyStateWidget(
-        title: 'No Groups Found',
-        description:
-            'No groups match your search criteria. Try adjusting your search terms.',
-        buttonText: 'Clear Search',
-        iconName: 'search_off',
-        onButtonPressed: () {
-          setState(() {
-            _searchQuery = '';
-            _isSearchExpanded = false;
-          });
-        },
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: () async {
-        await Future.delayed(const Duration(seconds: 1));
-      },
-      child: ListView.builder(
-        padding: EdgeInsets.only(bottom: 10.h),
-        itemCount: filteredGroups.length,
-        itemBuilder: (context, index) {
-          return GroupCardWidget(
-            groupData: filteredGroups[index],
-            groupType: 'system_groups',
-            onTap: () => _showGroupDetails(filteredGroups[index]),
-            onLongPress: () => _showGroupOptions(filteredGroups[index]),
-          );
-        },
+    
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.construction,
+            size: 64.sp,
+            color: theme.colorScheme.primary.withValues(alpha: 0.6),
+          ),
+          SizedBox(height: 2.h),
+          Text(
+            'Coming Soon',
+            style: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          SizedBox(height: 1.h),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8.w),
+            child: Text(
+              'System groups feature is coming soon. Stay tuned!',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -759,7 +747,9 @@ class _GroupsScreenState extends State<GroupsScreen>
                 );
               } catch (e) {
                 if (!mounted) return;
-                Navigator.pop(context);
+                if (Navigator.of(context).canPop()) {
+                  Navigator.pop(context);
+                }
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Failed to delete group: ${e.toString()}'),

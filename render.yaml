@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: notification-service
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    rootDir: render-service
+    envVars:
+      - key: FIREBASE_SERVICE_ACCOUNT_BASE64
+        sync: false
+        # Set this in Render Dashboard → Environment tab
+        # Generate with: cat serviceAccountKey.json | base64
+        # Or use the PowerShell script: render-service/encode-base64.ps1
+      - key: FIREBASE_DATABASE_URL
+        sync: false
+        # Optional: Only needed if using Firebase Realtime Database
+        # Format: https://PROJECT_ID-default-rtdb.firebaseio.com
+    healthCheckPath: /health
+

@@ -9,6 +9,7 @@ import './widgets/payment_method_card.dart';
 import './widgets/payment_progress_indicator.dart';
 import './widgets/security_verification_widget.dart';
 import '../../services/equb_service.dart';
+import '../../services/biometric_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class PaymentProcessing extends StatefulWidget {
@@ -125,8 +126,16 @@ class _PaymentProcessingState extends State<PaymentProcessing>
   }
 
   void _handleBiometricAuth() {
-    // Simulate biometric authentication
-    _processPayment();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final ok = await BiometricService().authenticate(
+        reason: 'Authenticate to complete payment',
+      );
+      if (ok) {
+        _processPayment();
+      } else {
+        _showErrorMessage('Biometric authentication failed.');
+      }
+    });
   }
 
   void _processPayment() async {
@@ -136,11 +145,13 @@ class _PaymentProcessingState extends State<PaymentProcessing>
     }
 
     // Validate method-specific requirements
-    if (selectedPaymentMethod == 'Chapa' && (selectedBank == null || selectedBank!.isEmpty)) {
+    if (selectedPaymentMethod == 'Chapa' &&
+        (selectedBank == null || selectedBank!.isEmpty)) {
       _showErrorMessage('Please select a bank for Chapa');
       return;
     }
-    if (selectedPaymentMethod == 'Screenshot' && (selectedScreenshotName == null)) {
+    if (selectedPaymentMethod == 'Screenshot' &&
+        (selectedScreenshotName == null)) {
       _showErrorMessage('Please select a screenshot to upload');
       return;
     }
@@ -163,7 +174,11 @@ class _PaymentProcessingState extends State<PaymentProcessing>
         ? ('CHP' + DateTime.now().millisecondsSinceEpoch.toString())
         : null;
     try {
-      final double amount = double.tryParse((paymentData['amount'] as String).replaceAll(',', '')) ?? 0.0;
+      final double amount =
+          double.tryParse(
+            (paymentData['amount'] as String).replaceAll(',', ''),
+          ) ??
+          0.0;
       final String currency = (paymentData['currency'] as String?) ?? 'ETB';
       if (equbId != null) {
         await EqubService().recordPayment(
@@ -173,7 +188,9 @@ class _PaymentProcessingState extends State<PaymentProcessing>
           currency: currency,
           method: selectedPaymentMethod ?? 'Unknown',
           bankName: selectedPaymentMethod == 'Chapa' ? selectedBank : null,
-          screenshotName: selectedPaymentMethod == 'Screenshot' ? selectedScreenshotName : null,
+          screenshotName: selectedPaymentMethod == 'Screenshot'
+              ? selectedScreenshotName
+              : null,
           reference: ref,
           chapaReferenceId: chapaRef,
         );
@@ -281,21 +298,17 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                 Container(
                   padding: EdgeInsets.all(3.w),
                   decoration: BoxDecoration(
-                    color:
-                        theme.colorScheme.surfaceContainerHighest,
+                    color: theme.colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                   child: Column(
                     children: [
                       Text(
                         'Transaction Reference',
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(
-                              color: AppTheme
-                                  .lightTheme
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color:
+                              AppTheme.lightTheme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
                       SizedBox(height: 1.h),
                       Text(
@@ -363,9 +376,11 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                   child: OutlinedButton(
                     onPressed: () {
                       Navigator.of(context).pop();
-                      Navigator.pushNamed(context, AppRoutes.paymentHistory, arguments: {
-                        'equbId': equbId,
-                      });
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.paymentHistory,
+                        arguments: {'equbId': equbId},
+                      );
                     },
                     child: const Text('View in History'),
                   ),
@@ -411,7 +426,7 @@ class _PaymentProcessingState extends State<PaymentProcessing>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -463,8 +478,9 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                   children: [
                     Text(
                       'Select Payment Method',
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     SizedBox(height: 2.h),
                     ...paymentMethods.map(
@@ -508,16 +524,16 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                   children: [
                     Text(
                       'Recipient Details',
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     SizedBox(height: 2.h),
                     Row(
                       children: [
                         CustomIconWidget(
                           iconName: 'person',
-                          color:
-                              theme.colorScheme.onSurfaceVariant,
+                          color: theme.colorScheme.onSurfaceVariant,
                           size: 20,
                         ),
                         SizedBox(width: 3.w),
@@ -532,8 +548,7 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                       children: [
                         CustomIconWidget(
                           iconName: 'phone',
-                          color:
-                              theme.colorScheme.onSurfaceVariant,
+                          color: theme.colorScheme.onSurfaceVariant,
                           size: 20,
                         ),
                         SizedBox(width: 3.w),
@@ -548,8 +563,7 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                       children: [
                         CustomIconWidget(
                           iconName: 'account_balance',
-                          color:
-                              theme.colorScheme.onSurfaceVariant,
+                          color: theme.colorScheme.onSurfaceVariant,
                           size: 20,
                         ),
                         SizedBox(width: 3.w),
@@ -597,8 +611,9 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                       currentStage == PaymentStage.processing
                           ? 'Processing Payment...'
                           : 'Confirming Transaction...',
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w500),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     SizedBox(height: 1.h),
@@ -636,16 +651,20 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                   children: [
                     Text(
                       'Choose Bank',
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     SizedBox(height: 1.5.h),
-                    ...chapaBanks.map((bank) => RadioListTile<String>(
-                          title: Text(bank),
-                          value: bank,
-                          groupValue: selectedBank,
-                          onChanged: (v) => setState(() => selectedBank = v),
-                          dense: true,
-                        )),
+                    ...chapaBanks.map(
+                      (bank) => RadioListTile<String>(
+                        title: Text(bank),
+                        value: bank,
+                        groupValue: selectedBank,
+                        onChanged: (v) => setState(() => selectedBank = v),
+                        dense: true,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -664,12 +683,27 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Receipt Preview', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                    Text(
+                      'Receipt Preview',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     SizedBox(height: 1.h),
                     Text('Group: ' + (paymentData['groupName'] as String)),
-                    Text('Amount: ' + (paymentData['amount'] as String) + ' ' + (paymentData['currency'] as String)),
+                    Text(
+                      'Amount: ' +
+                          (paymentData['amount'] as String) +
+                          ' ' +
+                          (paymentData['currency'] as String),
+                    ),
                     Text('Method: Chapa'),
-                    Text('Bank: ' + (_bankController.text.isEmpty ? '—' : _bankController.text)),
+                    Text(
+                      'Bank: ' +
+                          (_bankController.text.isEmpty
+                              ? '—'
+                              : _bankController.text),
+                    ),
                   ],
                 ),
               ),
@@ -701,7 +735,9 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                   children: [
                     Text(
                       'Upload Payment Screenshot',
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     SizedBox(height: 1.5.h),
                     Row(
@@ -720,9 +756,7 @@ class _PaymentProcessingState extends State<PaymentProcessing>
                         SizedBox(width: 3.w),
                         if (selectedScreenshotName != null)
                           Flexible(
-                            child: Chip(
-                              label: Text(selectedScreenshotName!),
-                            ),
+                            child: Chip(label: Text(selectedScreenshotName!)),
                           ),
                       ],
                     ),

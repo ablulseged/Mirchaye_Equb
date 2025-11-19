@@ -90,8 +90,42 @@ service cloud.firestore {
       match /announcements/{announcementId} {
         allow read: if isAuthenticated();
         allow create: if isAuthenticated();
-        allow update: if isAuthenticated();
-        allow delete: if isAuthenticated();
+        // Allow update for liking/unliking - any authenticated user can like (both owners and members)
+        allow update: if isAuthenticated() && (
+          // Allow updates to likedBy and likeCount fields only (for liking/unliking)
+          // This works for both owners and members
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy', 'likeCount']) &&
+           request.resource.data.likedBy is list &&
+           request.resource.data.likeCount is int) ||
+          // Or allow full update if user is the sender or equb owner
+          (resource.data.get('senderUid') == request.auth.uid ||
+           get(/databases/$(database)/documents/equbs/$(equbId)).data.ownerUid == request.auth.uid)
+        );
+        allow delete: if isAuthenticated() && (
+          resource.data.get('senderUid') == request.auth.uid ||
+          get(/databases/$(database)/documents/equbs/$(equbId)).data.ownerUid == request.auth.uid
+        );
+
+        // COMMENTS SUBCOLLECTION
+        // Allow authenticated group members (or owner) to create comments for this announcement.
+        match /comments/{commentId} {
+          // Any authenticated user can read comments (optionally restrict to members)
+          allow read: if isAuthenticated();
+
+          // Create allowed only for authenticated members of the equb or the equb owner
+          allow create: if isAuthenticated() && (
+            // user is listed in the group's memberUids array
+            (request.auth.uid in get(/databases/$(database)/documents/equbs/$(equbId)).data.memberUids) ||
+            // or user is the equb owner
+            (get(/databases/$(database)/documents/equbs/$(equbId)).data.ownerUid == request.auth.uid)
+          );
+
+          // Update/Delete allowed only for the comment sender or the equb owner
+          allow update, delete: if isAuthenticated() && (
+            resource.data.senderUid == request.auth.uid ||
+            get(/databases/$(database)/documents/equbs/$(equbId)).data.ownerUid == request.auth.uid
+          );
+        }
       }
       
       // EQUB JOIN REQUESTS

@@ -37,6 +37,7 @@ void main() async {
   final messagingService = MessagingService();
   await messagingService.initialize();
 
+
   bool _hasShownError = false;
 
   ErrorWidget.builder = (FlutterErrorDetails details) {

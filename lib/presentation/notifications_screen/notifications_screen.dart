@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 import '../../services/notification_service.dart';
+import '../../services/equb_service.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({Key? key}) : super(key: key);
@@ -19,10 +20,12 @@ class NotificationsScreen extends StatelessWidget {
           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
             stream: notificationService.streamNotifications(),
             builder: (context, snapshot) {
-              final unreadCount = snapshot.data?.docs.where((doc) {
-                final data = doc.data();
-                return (data['isRead'] as bool? ?? false) == false;
-              }).length ?? 0;
+              final unreadCount =
+                  snapshot.data?.docs.where((doc) {
+                    final data = doc.data();
+                    return (data['isRead'] as bool? ?? false) == false;
+                  }).length ??
+                  0;
               return IconButton(
                 onPressed: unreadCount > 0
                     ? () async {
@@ -72,7 +75,7 @@ class NotificationsScreen extends StatelessWidget {
           }
 
           final notifications = snapshot.data?.docs ?? [];
-          
+
           // Sort by createdAt descending (most recent first)
           notifications.sort((a, b) {
             final createdAtA = a.data()['createdAt'] as Timestamp?;
@@ -154,7 +157,7 @@ class NotificationsScreen extends StatelessWidget {
     // Get icon and color based on type
     String iconName = 'notifications';
     Color iconColor = theme.colorScheme.primary;
-    
+
     switch (type) {
       case 'payment':
         iconName = 'payment';
@@ -174,12 +177,79 @@ class NotificationsScreen extends StatelessWidget {
         break;
     }
 
+    final equbId = data['equbId'] as String?;
+    final announcementId =
+        (data['data'] as Map<String, dynamic>?)?['announcementId'] as String? ??
+        data['announcementId'] as String?;
+
     return Card(
-      color: isRead ? null : theme.colorScheme.primaryContainer.withOpacity(0.3),
+      color: isRead
+          ? null
+          : theme.colorScheme.primaryContainer.withOpacity(0.3),
       child: InkWell(
         onTap: () async {
           if (!isRead) {
             await notificationService.markAsRead(notificationId);
+          }
+
+          // If this notification references an announcement, open a dialog to add a comment specific to this notification
+          if (equbId != null && announcementId != null) {
+            final TextEditingController _input = TextEditingController();
+            final posted = await showDialog<bool>(
+              context: context,
+              builder: (context) {
+                return AlertDialog(
+                  title: const Text('Add comment'),
+                  content: TextField(
+                    controller: _input,
+                    minLines: 1,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      hintText: 'Write your comment...',
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        final text = _input.text.trim();
+                        if (text.isEmpty) return;
+                        try {
+                          await EqubService().addAnnouncementComment(
+                            equbId: equbId,
+                            announcementId: announcementId,
+                            message: text,
+                            parentCommentId: null,
+                          );
+                          Navigator.pop(context, true);
+                        } catch (e) {
+                          Navigator.pop(context, false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Failed to post comment: ${e.toString()}',
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      child: const Text('Post'),
+                    ),
+                  ],
+                );
+              },
+            );
+
+            if (posted == true) {
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('Comment posted')));
+            }
+          } else {
+            // Otherwise, no announcement to comment on - optionally navigate to notifications details
           }
         },
         child: Padding(
@@ -210,7 +280,9 @@ class NotificationsScreen extends StatelessWidget {
                           child: Text(
                             title,
                             style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
+                              fontWeight: isRead
+                                  ? FontWeight.normal
+                                  : FontWeight.bold,
                             ),
                           ),
                         ),
@@ -224,12 +296,47 @@ class NotificationsScreen extends StatelessWidget {
                       ],
                     ),
                     SizedBox(height: 0.5.h),
-                    Text(
-                      message,
-                      style: theme.textTheme.bodyMedium,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    // If this notification references an announcement, show the latest comment (if any)
+                    if (equbId != null && announcementId != null)
+                      StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                        stream: EqubService().streamAnnouncementComments(
+                          equbId: equbId,
+                          announcementId: announcementId,
+                        ),
+                        builder: (context, snap) {
+                          if (snap.connectionState == ConnectionState.waiting) {
+                            return Text(
+                              message,
+                              style: theme.textTheme.bodyMedium,
+                            );
+                          }
+                          final docs = snap.data?.docs ?? [];
+                          if (docs.isNotEmpty) {
+                            final latest = docs.last.data();
+                            final latestMsg =
+                                latest['message'] as String? ?? message;
+                            return Text(
+                              latestMsg,
+                              style: theme.textTheme.bodyMedium,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            );
+                          }
+                          return Text(
+                            message,
+                            style: theme.textTheme.bodyMedium,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          );
+                        },
+                      )
+                    else
+                      Text(
+                        message,
+                        style: theme.textTheme.bodyMedium,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                   ],
                 ),
               ),
@@ -270,4 +377,3 @@ class NotificationsScreen extends StatelessWidget {
     }
   }
 }
-

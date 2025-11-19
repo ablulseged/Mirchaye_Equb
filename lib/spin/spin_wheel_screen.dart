@@ -138,51 +138,93 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                       .map((d) => (d.data()['name'] ?? d.data()['email'] ?? d.id).toString())
                       .toList(growable: false);
 
-                  return Column(
-                    children: [
-                      const SizedBox(height: 24),
-                      Center(
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // Wheel
-                            Transform.rotate(
-                              angle: _animation?.value ?? _currentAngle,
-                              child: CustomPaint(
-                                size: const Size(320, 320),
-                                painter: _WheelPainter(segmentCount: names.length),
-                              ),
-                            ),
-                            // Center hub
-                            Container(
-                              width: 60,
-                              height: 60,
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.surface,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 8,
+                  return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: _equbService.streamAnnouncements(widget.equbId),
+                    builder: (context, announcementsSnap) {
+                      // Get the latest spin winner announcement
+                      final announcements = announcementsSnap.data?.docs ?? [];
+                      final spinWinnerAnnouncements = announcements
+                          .where((doc) => (doc.data()['type'] as String?) == 'spin_winner')
+                          .toList();
+                      final latestSpinWinner = spinWinnerAnnouncements.isNotEmpty
+                          ? spinWinnerAnnouncements.first.data()
+                          : null;
+
+                      return Column(
+                        children: [
+                          // Display latest spin winner announcement above the wheel
+                          if (latestSpinWinner != null)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              child: Card(
+                                color: theme.colorScheme.primaryContainer,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.emoji_events,
+                                        color: theme.colorScheme.onPrimaryContainer,
+                                        size: 24,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          latestSpinWinner['message'] as String? ?? 'Spin winner announced',
+                                          style: theme.textTheme.bodyMedium?.copyWith(
+                                            color: theme.colorScheme.onPrimaryContainer,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
+                            ),
+                          const SizedBox(height: 16),
+                          Center(
+                            child: Stack(
                               alignment: Alignment.center,
-                              child: _isSpinning
-                                  ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
-                                  : const Icon(Icons.casino_outlined),
+                              children: [
+                                // Wheel
+                                Transform.rotate(
+                                  angle: _animation?.value ?? _currentAngle,
+                                  child: CustomPaint(
+                                    size: const Size(320, 320),
+                                    painter: _WheelPainter(segmentCount: names.length),
+                                  ),
+                                ),
+                                // Center hub
+                                Container(
+                                  width: 60,
+                                  height: 60,
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.surface,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 8,
+                                      ),
+                                    ],
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: _isSpinning
+                                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                                      : const Icon(Icons.casino_outlined),
+                                ),
+                                // Top indicator
+                                Positioned(
+                                  top: 0,
+                                  child: CustomPaint(
+                                    size: const Size(24, 24),
+                                    painter: _IndicatorPainter(color: theme.colorScheme.primary),
+                                  ),
+                                ),
+                              ],
                             ),
-                            // Top indicator
-                            Positioned(
-                              top: 0,
-                              child: CustomPaint(
-                                size: const Size(24, 24),
-                                painter: _IndicatorPainter(color: theme.colorScheme.primary),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                          ),
                       const SizedBox(height: 24),
                       if (_isOwner)
                         Padding(
@@ -193,31 +235,6 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                               onPressed: names.isEmpty || _isSpinning ? null : _spin,
                               icon: const Icon(Icons.play_arrow),
                               label: const Text('Spin'),
-                            ),
-                          ),
-                        )
-                      else
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Card(
-                            color: theme.colorScheme.surfaceVariant,
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.info_outline,
-                                    color: theme.colorScheme.primary,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      'Only the group owner can spin the wheel',
-                                      style: theme.textTheme.bodyMedium,
-                                    ),
-                                  ),
-                                ],
-                              ),
                             ),
                           ),
                         ),
@@ -249,83 +266,84 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
               ),
             ],
           );
+                    },
+                  );
             },
           );
         },
       ),
-<<<<<<< HEAD
-          // Winner announcement overlay
-          if (_isSpinning)
-            Container(
-              color: Colors.black54,
-              alignment: Alignment.center,
+      // Winner announcement overlay
+      if (_isSpinning)
+        Container(
+          color: Colors.black54,
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.casino,
+                size: 64,
+                color: Colors.white,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Spinning...',
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        )
+      else if (_winnerName != null)
+        Container(
+          color: Colors.black54,
+          alignment: Alignment.center,
+          child: Card(
+            margin: const EdgeInsets.all(32),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(
-                    Icons.casino,
+                    Icons.emoji_events,
                     size: 64,
-                    color: Colors.white,
+                    color: Colors.amber,
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Spinning...',
+                    'Winner!',
                     style: theme.textTheme.headlineMedium?.copyWith(
-                      color: Colors.white,
                       fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _winnerName!,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _winnerName = null;
+                      });
+                    },
+                    child: const Text('Dismiss'),
                   ),
                 ],
               ),
-            )
-          else if (_winnerName != null)
-            Container(
-              color: Colors.black54,
-              alignment: Alignment.center,
-              child: Card(
-                margin: const EdgeInsets.all(32),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.emoji_events,
-                        size: 64,
-                        color: Colors.amber,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Winner!',
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _winnerName!,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            _winnerName = null;
-                          });
-                        },
-                        child: const Text('Dismiss'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             ),
-        ],
-      ),
+          ),
+        ),
+    ],
+    ),
     );
   }
 }

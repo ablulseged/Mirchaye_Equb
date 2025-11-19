@@ -49,7 +49,8 @@ class AppRoutes {
     // 🔹 Main Screens (Accessible only after login)
     dashboardHome: (context) => const DashboardHome(),
     userProfile: (context) {
-      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       return UserProfile(userId: args?['userId'] as String?);
     },
     browseEqubGroups: (context) => const BrowseEqubGroups(),
@@ -57,20 +58,30 @@ class AppRoutes {
     createEqub: (context) => const CreateGroupScreen(),
     groupsScreen: (context) => const GroupsScreen(),
     groupManagement: (context) {
-      final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-      return GroupManagementScreen(
-        equbId: args['equbId'] as String,
-        isOwnerForced: args['isOwner'] as bool?,
-      );
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      final equbId = args?['equbId'] as String?;
+      final isOwner = args?['isOwner'] as bool?;
+      if (equbId == null) {
+        // Missing arguments - fallback to dashboard
+        return const DashboardHome();
+      }
+      return GroupManagementScreen(equbId: equbId, isOwnerForced: isOwner);
     },
     announcementsScreen: (context) {
-      final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-      return AnnouncementsScreen(equbId: args['equbId'] as String);
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      final equbId = args?['equbId'] as String?;
+      if (equbId == null) return const DashboardHome();
+      return AnnouncementsScreen(equbId: equbId);
     },
     notificationsScreen: (context) => const NotificationsScreen(),
     spinWheel: (context) {
-      final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-      return SpinWheelScreen(equbId: args['equbId'] as String);
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      final equbId = args?['equbId'] as String?;
+      if (equbId == null) return const DashboardHome();
+      return SpinWheelScreen(equbId: equbId);
     },
     paymentHistory: (context) => const PaymentHistoryScreen(),
   };

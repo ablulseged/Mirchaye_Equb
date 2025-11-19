@@ -22,12 +22,22 @@ This service handles push notifications for the Flutter app using Firebase Cloud
    - **Value**: Set it to `render-service` (this tells Render where to find your `package.json` and `server.js` files)
    - If you update it after creation, Render will automatically redeploy
 
-4. **Set Environment Variables**
+4. **Set Environment Variables** ⚠️ **IMPORTANT**
+   
+   **Option 1 (Recommended): Use Base64**
+   - Add `FIREBASE_SERVICE_ACCOUNT_BASE64` with Base64-encoded JSON
+   - Generate Base64: `cat serviceAccountKey.json | base64` (or use online tool)
+   - See `ENVIRONMENT_SETUP.md` for detailed step-by-step instructions
+   
+   **Option 2: Use Direct JSON**
    - Add `FIREBASE_SERVICE_ACCOUNT` with your Firebase service account JSON
-   - To get the service account:
-     - Go to Firebase Console → Project Settings → Service Accounts
-     - Click "Generate New Private Key"
-     - Copy the entire JSON and paste it as the environment variable value
+   - ⚠️ Must have escaped `\n` in private_key (not real newlines)
+   - See `ENVIRONMENT_SETUP.md` for detailed step-by-step instructions
+   
+   To get the service account JSON:
+   - Go to Firebase Console → Project Settings → Service Accounts
+   - Click "Generate New Private Key"
+   - Download the JSON file
 
 5. **Deploy**
    - Click "Create Web Service"

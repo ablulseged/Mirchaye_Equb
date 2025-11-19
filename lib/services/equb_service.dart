@@ -13,7 +13,8 @@ class EqubService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  CollectionReference<Map<String, dynamic>> get _equbs => _db.collection('equbs');
+  CollectionReference<Map<String, dynamic>> get _equbs =>
+      _db.collection('equbs');
 
   Future<String> createEqubGroup({
     required String name,
@@ -100,13 +101,17 @@ class EqubService {
     return _equbs.where('memberUids', arrayContains: uid).snapshots();
   }
 
-  Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> streamJoinedEqubsByScan() {
+  Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+  streamJoinedEqubsByScan() {
     final uid = _auth.currentUser!.uid;
     return _equbs.snapshots().asyncMap((snapshot) async {
       final List<QueryDocumentSnapshot<Map<String, dynamic>>> result = [];
       for (final doc in snapshot.docs) {
         try {
-          final member = await doc.reference.collection('members').doc(uid).get();
+          final member = await doc.reference
+              .collection('members')
+              .doc(uid)
+              .get();
           if (member.exists) result.add(doc);
         } catch (_) {
           // Ignore permission errors per group
@@ -123,20 +128,20 @@ class EqubService {
         .where('uid', isEqualTo: uid)
         .snapshots()
         .asyncMap((snap) async {
-      final futures = snap.docs.map((memberDoc) async {
-        final equbRef = memberDoc.reference.parent.parent!;
-        final equbDoc = await equbRef.get();
-        final data = equbDoc.data() as Map<String, dynamic>?;
-        if (data == null) return null;
-        return {
-          'id': equbDoc.id,
-          ...data,
-          'memberRole': memberDoc.data()['role'],
-        };
-      }).toList();
-      final results = await Future.wait(futures);
-      return results.whereType<Map<String, dynamic>>().toList();
-    });
+          final futures = snap.docs.map((memberDoc) async {
+            final equbRef = memberDoc.reference.parent.parent!;
+            final equbDoc = await equbRef.get();
+            final data = equbDoc.data() as Map<String, dynamic>?;
+            if (data == null) return null;
+            return {
+              'id': equbDoc.id,
+              ...data,
+              'memberRole': memberDoc.data()['role'],
+            };
+          }).toList();
+          final results = await Future.wait(futures);
+          return results.whereType<Map<String, dynamic>>().toList();
+        });
   }
 
   Future<int> countOwnedEqubsByCurrentUser() async {
@@ -165,7 +170,8 @@ class EqubService {
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> streamPaymentsByEqub(
-      String equbId) {
+    String equbId,
+  ) {
     return _equbs
         .doc(equbId)
         .collection('payments')
@@ -220,7 +226,11 @@ class EqubService {
       lastId = ref.id;
     } catch (_) {}
     try {
-      final ref = await _db.collection('users').doc(user.uid).collection('payments').add(payload);
+      final ref = await _db
+          .collection('users')
+          .doc(user.uid)
+          .collection('payments')
+          .add(payload);
       lastId = ref.id;
     } catch (_) {}
     // Always save locally so History works offline/when rules block
@@ -232,7 +242,8 @@ class EqubService {
     try {
       await _equbs.doc(equbId).collection('announcements').add({
         'type': 'payment',
-        'message': 'Payment received: ' + amount.toStringAsFixed(2) + ' ' + currency,
+        'message':
+            'Payment received: ' + amount.toStringAsFixed(2) + ' ' + currency,
         'reference': reference,
         'senderUid': user.uid,
         'createdAt': now,
@@ -246,7 +257,8 @@ class EqubService {
       await NotificationService().createNotification(
         userId: user.uid,
         title: 'Payment Confirmed',
-        message: 'Your payment of ${amount.toStringAsFixed(2)} $currency has been recorded',
+        message:
+            'Your payment of ${amount.toStringAsFixed(2)} $currency has been recorded',
         type: 'payment',
         equbId: equbId,
         equbName: equbName,
@@ -259,11 +271,41 @@ class EqubService {
     // Create notifications for all other group members
     try {
       final membersSnap = await _equbs.doc(equbId).collection('members').get();
-      final memberUids = membersSnap.docs.map((doc) => doc.id).where((uid) => uid != user.uid).toList();
-      
-      if (memberUids.isNotEmpty) {
+      final equbSnap = await _equbs.doc(equbId).get();
+      final equbData = equbSnap.data();
+      final ownerUid = equbData?['ownerUid'] as String?;
+
+      final memberUids = membersSnap.docs
+          .map((doc) => doc.id)
+          .where((uid) => uid != user.uid)
+          .toList();
+
+      // Send heads-up notification specifically to the group owner
+      if (ownerUid != null && ownerUid != user.uid) {
+        await NotificationService().createNotification(
+          userId: ownerUid,
+          title: 'Payment Received',
+          message:
+              '${user.displayName ?? user.email ?? "A member"} sent ${amount.toStringAsFixed(2)} $currency to ${equbName ?? "the group"}',
+          type: 'payment',
+          equbId: equbId,
+          equbName: equbName,
+          data: {
+            'reference': reference,
+            'method': method,
+            'senderUid': user.uid,
+          },
+          showHeadsUp: true, // Show heads-up notification to owner
+        );
+      }
+
+      // Send regular notifications to other members (excluding owner and payer)
+      final otherMemberUids = memberUids
+          .where((uid) => uid != ownerUid)
+          .toList();
+      if (otherMemberUids.isNotEmpty) {
         await NotificationService().createNotificationForUsers(
-          userIds: memberUids,
+          userIds: otherMemberUids,
           title: 'Payment Received',
           message: 'Payment of ${amount.toStringAsFixed(2)} $currency received',
           type: 'payment',
@@ -280,10 +322,16 @@ class EqubService {
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> streamSpins(String equbId) {
-    return _equbs.doc(equbId).collection('spins').orderBy('createdAt', descending: false).snapshots();
+    return _equbs
+        .doc(equbId)
+        .collection('spins')
+        .orderBy('createdAt', descending: false)
+        .snapshots();
   }
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> streamJoinRequests(String equbId) {
+  Stream<QuerySnapshot<Map<String, dynamic>>> streamJoinRequests(
+    String equbId,
+  ) {
     return _equbs.doc(equbId).collection('joinRequests').snapshots();
   }
 
@@ -320,10 +368,7 @@ class EqubService {
           'memberUids': FieldValue.arrayUnion([userId]),
         });
       }
-      tx.update(reqRef, {
-        'status': 'approved',
-        'approvedAt': Timestamp.now(),
-      });
+      tx.update(reqRef, {'status': 'approved', 'approvedAt': Timestamp.now()});
     });
   }
 
@@ -332,10 +377,7 @@ class EqubService {
     required String userId,
   }) async {
     final reqRef = _equbs.doc(equbId).collection('joinRequests').doc(userId);
-    await reqRef.update({
-      'status': 'declined',
-      'declinedAt': Timestamp.now(),
-    });
+    await reqRef.update({'status': 'declined', 'declinedAt': Timestamp.now()});
   }
 
   Future<void> addAnnouncement({
@@ -351,15 +393,18 @@ class EqubService {
       'likeCount': 0,
       'likedBy': [],
     });
-    
-    // Create notifications for all members
+
+    // Create notifications for all members with heads-up notifications
     try {
       final membersSnap = await _equbs.doc(equbId).collection('members').get();
       final equbSnap = await _equbs.doc(equbId).get();
       final equbData = equbSnap.data();
       final equbName = equbData?['name'] ?? 'Group';
-      final memberUids = membersSnap.docs.map((doc) => doc.id).where((uid) => uid != _auth.currentUser?.uid).toList();
-      
+      final memberUids = membersSnap.docs
+          .map((doc) => doc.id)
+          .where((uid) => uid != _auth.currentUser?.uid)
+          .toList();
+
       if (memberUids.isNotEmpty) {
         await NotificationService().createNotificationForUsers(
           userIds: memberUids,
@@ -368,6 +413,7 @@ class EqubService {
           type: 'general',
           equbId: equbId,
           equbName: equbName,
+          showHeadsUp: true, // Show heads-up notifications for announcements
         );
       }
     } catch (_) {
@@ -375,22 +421,28 @@ class EqubService {
     }
   }
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> streamAnnouncements(String equbId) {
-    return _equbs.doc(equbId).collection('announcements')
+  Stream<QuerySnapshot<Map<String, dynamic>>> streamAnnouncements(
+    String equbId,
+  ) {
+    return _equbs
+        .doc(equbId)
+        .collection('announcements')
         .orderBy('createdAt', descending: true)
         .snapshots();
   }
 
   /// Stream all announcements from multiple groups and format them for recent activity
-  Stream<List<Map<String, dynamic>>> streamAllGroupAnnouncements(List<String> equbIds) {
+  Stream<List<Map<String, dynamic>>> streamAllGroupAnnouncements(
+    List<String> equbIds,
+  ) {
     if (equbIds.isEmpty) {
       return Stream.value([]);
     }
 
     // Collect all announcements from all groups
-    final streams = equbIds.map((equbId) => 
-      streamAnnouncements(equbId)
-    ).toList();
+    final streams = equbIds
+        .map((equbId) => streamAnnouncements(equbId))
+        .toList();
 
     return _mergeAnnouncementStreams(streams, equbIds);
   }
@@ -400,32 +452,32 @@ class EqubService {
     List<String> equbIds,
   ) async* {
     final Map<int, QuerySnapshot<Map<String, dynamic>>> latest = {};
-    
+
     // Listen to all streams and update latest snapshots
     for (int i = 0; i < streams.length; i++) {
       streams[i].listen((snapshot) {
         latest[i] = snapshot;
       });
     }
-    
+
     // Periodically emit combined and sorted announcements
     await for (var _ in Stream.periodic(const Duration(milliseconds: 500))) {
       final allAnnouncements = <Map<String, dynamic>>[];
-      
+
       for (int i = 0; i < equbIds.length; i++) {
         final snapshot = latest[i];
         if (snapshot == null) continue;
-        
+
         for (final doc in snapshot.docs) {
           final data = doc.data();
           final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
-          
+
           // Determine activity type and icon based on announcement type
           String title = 'New Announcement';
           String description = data['message'] as String? ?? '';
           String iconName = 'campaign';
           Color iconColor = const Color(0xFF6F35A5);
-          
+
           final type = data['type'] as String?;
           if (type == 'payment') {
             title = 'Payment Received';
@@ -440,7 +492,7 @@ class EqubService {
             iconName = 'check_circle';
             iconColor = const Color(0xFF2E7D32);
           }
-          
+
           allAnnouncements.add({
             'title': title,
             'description': description,
@@ -453,7 +505,7 @@ class EqubService {
           });
         }
       }
-      
+
       // Sort by date, most recent first
       allAnnouncements.sort((a, b) {
         final dateA = a['createdAt'] as DateTime?;
@@ -463,7 +515,7 @@ class EqubService {
         if (dateB == null) return -1;
         return dateB.compareTo(dateA);
       });
-      
+
       yield allAnnouncements;
     }
   }
@@ -471,7 +523,7 @@ class EqubService {
   String _formatTime(DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
-    
+
     if (difference.inDays == 0) {
       if (difference.inHours == 0) {
         if (difference.inMinutes == 0) {
@@ -498,8 +550,11 @@ class EqubService {
       throw Exception('You must be logged in to like announcements.');
     }
 
-    final announcementRef = _equbs.doc(equbId).collection('announcements').doc(announcementId);
-    
+    final announcementRef = _equbs
+        .doc(equbId)
+        .collection('announcements')
+        .doc(announcementId);
+
     await _db.runTransaction((transaction) async {
       final snapshot = await transaction.get(announcementRef);
       if (!snapshot.exists) {
@@ -523,6 +578,50 @@ class EqubService {
     });
   }
 
+  /// Add a comment to an announcement. parentCommentId is optional for replies.
+  Future<void> addAnnouncementComment({
+    required String equbId,
+    required String announcementId,
+    required String message,
+    String? parentCommentId,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('Not authenticated');
+    final now = Timestamp.now();
+    final commentRef = _equbs
+        .doc(equbId)
+        .collection('announcements')
+        .doc(announcementId)
+        .collection('comments')
+        .doc();
+
+    final payload = {
+      'id': commentRef.id,
+      'message': message,
+      'senderUid': user.uid,
+      'createdAt': now,
+      'parentCommentId': parentCommentId,
+      'likeCount': 0,
+      'likedBy': [],
+    };
+
+    await commentRef.set(payload);
+  }
+
+  /// Stream comments for an announcement (including replies). Returns ordered by createdAt asc.
+  Stream<QuerySnapshot<Map<String, dynamic>>> streamAnnouncementComments({
+    required String equbId,
+    required String announcementId,
+  }) {
+    return _equbs
+        .doc(equbId)
+        .collection('announcements')
+        .doc(announcementId)
+        .collection('comments')
+        .orderBy('createdAt', descending: false)
+        .snapshots();
+  }
+
   Future<Map<String, dynamic>?> spinWinner(String equbId) async {
     final membersSnap = await _equbs.doc(equbId).collection('members').get();
     if (membersSnap.size == 0) return null;
@@ -537,23 +636,25 @@ class EqubService {
     });
     // Optional: also add an announcement for visibility
     await _equbs.doc(equbId).collection('announcements').add({
-      'message': 'Spin winner: ${winnerData['name'] ?? winnerData['email'] ?? winner.id}',
+      'message':
+          'Spin winner: ${winnerData['name'] ?? winnerData['email'] ?? winner.id}',
       'createdAt': Timestamp.now(),
       'senderUid': _auth.currentUser?.uid,
       'type': 'spin_winner',
     });
-    
+
     // Create notifications for all members
     try {
       final equbSnap = await _equbs.doc(equbId).get();
       final equbData = equbSnap.data();
       final equbName = equbData?['name'] ?? 'Group';
       final memberUids = docs.map((doc) => doc.id).toList();
-      
+
       await NotificationService().createNotificationForUsers(
         userIds: memberUids,
         title: 'Spin Winner',
-        message: '${winnerData['name'] ?? winnerData['email'] ?? winner.id} won the spin!',
+        message:
+            '${winnerData['name'] ?? winnerData['email'] ?? winner.id} won the spin!',
         type: 'spin_winner',
         equbId: equbId,
         equbName: equbName,
@@ -562,7 +663,7 @@ class EqubService {
     } catch (_) {
       // Ignore notification errors
     }
-    
+
     return {'uid': winner.id, ...winnerData};
   }
 
@@ -577,12 +678,13 @@ class EqubService {
       'createdAt': Timestamp.now(),
     });
     await _equbs.doc(equbId).collection('announcements').add({
-      'message': 'Spin winner: ${winnerData['name'] ?? winnerData['email'] ?? winnerUid}',
+      'message':
+          'Spin winner: ${winnerData['name'] ?? winnerData['email'] ?? winnerUid}',
       'createdAt': Timestamp.now(),
       'senderUid': _auth.currentUser?.uid,
       'type': 'spin_winner',
     });
-    
+
     // Create notifications for all members
     try {
       final membersSnap = await _equbs.doc(equbId).collection('members').get();
@@ -590,11 +692,12 @@ class EqubService {
       final equbData = equbSnap.data();
       final equbName = equbData?['name'] ?? 'Group';
       final memberUids = membersSnap.docs.map((doc) => doc.id).toList();
-      
+
       await NotificationService().createNotificationForUsers(
         userIds: memberUids,
         title: 'Spin Winner',
-        message: '${winnerData['name'] ?? winnerData['email'] ?? winnerUid} won the spin!',
+        message:
+            '${winnerData['name'] ?? winnerData['email'] ?? winnerUid} won the spin!',
         type: 'spin_winner',
         equbId: equbId,
         equbName: equbName,
@@ -605,10 +708,7 @@ class EqubService {
     }
   }
 
-  Future<void> requestToJoin({
-    required String equbId,
-    String? message,
-  }) async {
+  Future<void> requestToJoin({required String equbId, String? message}) async {
     final user = _auth.currentUser;
     if (user == null) {
       throw Exception('You must be logged in to send a join request.');
@@ -627,6 +727,42 @@ class EqubService {
     final memberSnap = await docRef.collection('members').doc(uid).get();
     if (memberSnap.exists) {
       throw Exception('You are already a member of this group.');
+    }
+
+    final equbData = equbSnap.data();
+    final requireApproval = equbData?['requireApproval'] ?? true;
+    final autoJoin = equbData?['autoJoin'] ?? false;
+
+    // If it's an auto-join group or doesn't require approval, join directly
+    if (autoJoin || !requireApproval) {
+      // Auto-join directly without approval
+      final memberRef = docRef.collection('members').doc(uid);
+      final currentMembers =
+          (equbData?['currentMembers'] as num?)?.toInt() ?? 0;
+      final maxMembers = (equbData?['maxMembers'] as num?)?.toInt() ?? 10;
+
+      if (currentMembers >= maxMembers) {
+        throw Exception('This group is full. Please try another group.');
+      }
+
+      await _db.runTransaction((tx) async {
+        final memberSnap = await tx.get(memberRef);
+        if (!memberSnap.exists) {
+          tx.set(memberRef, {
+            'uid': uid,
+            'role': 'member',
+            'joinedAt': Timestamp.now(),
+            'name': user.displayName,
+            'email': user.email,
+          });
+          tx.update(docRef, {
+            'currentMembers': FieldValue.increment(1),
+            'memberUids': FieldValue.arrayUnion([uid]),
+          });
+        }
+      });
+
+      return;
     }
 
     // Check existing request
@@ -657,7 +793,8 @@ class EqubService {
     try {
       await docRef.collection('announcements').add({
         'type': 'join_request',
-        'message': 'Join request from: ${user.displayName ?? user.email ?? uid}',
+        'message':
+            'Join request from: ${user.displayName ?? user.email ?? uid}',
         'requesterUid': uid,
         'createdAt': Timestamp.fromDate(now),
       });
@@ -667,15 +804,15 @@ class EqubService {
 
     // Create notification for the group owner
     try {
-      final equbData = equbSnap.data();
       final ownerUid = equbData?['ownerUid'];
       final equbName = equbData?['name'] ?? 'Group';
-      
-      if (ownerUid != null) {
+
+      if (ownerUid != null && ownerUid != 'system') {
         await NotificationService().createNotification(
           userId: ownerUid as String,
           title: 'New Join Request',
-          message: '${user.displayName ?? user.email ?? "Someone"} wants to join $equbName',
+          message:
+              '${user.displayName ?? user.email ?? "Someone"} wants to join $equbName',
           type: 'join_request',
           equbId: equbId,
           equbName: equbName,
@@ -721,22 +858,26 @@ class EqubService {
     }
 
     // Build update data
-    final updateData = <String, dynamic>{
-      'updatedAt': Timestamp.now(),
-    };
+    final updateData = <String, dynamic>{'updatedAt': Timestamp.now()};
 
     if (name != null) updateData['name'] = name;
     if (description != null) updateData['description'] = description;
     if (category != null) updateData['category'] = category;
-    if (contributionAmount != null) updateData['contributionAmount'] = contributionAmount;
-    if (paymentFrequency != null) updateData['paymentFrequency'] = paymentFrequency;
+    if (contributionAmount != null)
+      updateData['contributionAmount'] = contributionAmount;
+    if (paymentFrequency != null)
+      updateData['paymentFrequency'] = paymentFrequency;
     if (maxMembers != null) updateData['maxMembers'] = maxMembers;
-    if (startDate != null) updateData['startDate'] = Timestamp.fromDate(startDate);
-    if (latePenaltyPercentage != null) updateData['latePenaltyPercentage'] = latePenaltyPercentage;
-    if (emergencyFundPercentage != null) updateData['emergencyFundPercentage'] = emergencyFundPercentage;
+    if (startDate != null)
+      updateData['startDate'] = Timestamp.fromDate(startDate);
+    if (latePenaltyPercentage != null)
+      updateData['latePenaltyPercentage'] = latePenaltyPercentage;
+    if (emergencyFundPercentage != null)
+      updateData['emergencyFundPercentage'] = emergencyFundPercentage;
     if (allowEarlyExit != null) updateData['allowEarlyExit'] = allowEarlyExit;
     if (isPublic != null) updateData['isPublic'] = isPublic;
-    if (requireApproval != null) updateData['requireApproval'] = requireApproval;
+    if (requireApproval != null)
+      updateData['requireApproval'] = requireApproval;
     if (coverImageUrl != null) updateData['coverImageUrl'] = coverImageUrl;
 
     await _equbs.doc(equbId).update(updateData);
@@ -762,15 +903,21 @@ class EqubService {
 
     // Delete all subcollections first (Firestore doesn't delete them automatically)
     final batch = _db.batch();
-    
+
     // Delete members
-    final membersSnapshot = await _equbs.doc(equbId).collection('members').get();
+    final membersSnapshot = await _equbs
+        .doc(equbId)
+        .collection('members')
+        .get();
     for (var doc in membersSnapshot.docs) {
       batch.delete(doc.reference);
     }
 
     // Delete payments
-    final paymentsSnapshot = await _equbs.doc(equbId).collection('payments').get();
+    final paymentsSnapshot = await _equbs
+        .doc(equbId)
+        .collection('payments')
+        .get();
     for (var doc in paymentsSnapshot.docs) {
       batch.delete(doc.reference);
     }
@@ -782,19 +929,28 @@ class EqubService {
     }
 
     // Delete join requests
-    final requestsSnapshot = await _equbs.doc(equbId).collection('joinRequests').get();
+    final requestsSnapshot = await _equbs
+        .doc(equbId)
+        .collection('joinRequests')
+        .get();
     for (var doc in requestsSnapshot.docs) {
       batch.delete(doc.reference);
     }
 
     // Delete announcements
-    final announcementsSnapshot = await _equbs.doc(equbId).collection('announcements').get();
+    final announcementsSnapshot = await _equbs
+        .doc(equbId)
+        .collection('announcements')
+        .get();
     for (var doc in announcementsSnapshot.docs) {
       batch.delete(doc.reference);
     }
 
     // Delete invites
-    final invitesSnapshot = await _equbs.doc(equbId).collection('invites').get();
+    final invitesSnapshot = await _equbs
+        .doc(equbId)
+        .collection('invites')
+        .get();
     for (var doc in invitesSnapshot.docs) {
       batch.delete(doc.reference);
     }
@@ -839,7 +995,7 @@ class EqubService {
     }
 
     final equbRef = _equbs.doc(equbId);
-    
+
     // Check if member exists
     final memberDoc = await equbRef.collection('members').doc(memberUid).get();
     if (!memberDoc.exists) {
@@ -862,5 +1018,3 @@ class EqubService {
     await equbRef.collection('members').doc(memberUid).delete();
   }
 }
-
-

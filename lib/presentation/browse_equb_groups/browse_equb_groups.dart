@@ -7,7 +7,9 @@ import './widgets/empty_browse_state.dart';
 import './widgets/filter_chip_widget.dart';
 import './widgets/group_card.dart';
 import '../../services/equb_service.dart';
+import '../../services/user_service.dart';
 import './widgets/search_bar_widget.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class BrowseEqubGroups extends StatefulWidget {
   const BrowseEqubGroups({Key? key}) : super(key: key);
@@ -53,10 +55,28 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
 
   final EqubService _equbService = EqubService();
 
+  // Category list for filter chips
+  final List<String> categories = [
+    'All',
+    'family',
+    'friends',
+    'work',
+    'college',
+    'savings',
+    'general',
+    'emergency',
+    'education',
+    'health',
+    'business',
+  ];
+
+  String? _selectedCategory = 'All';
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _selectedCategory = 'All';
   }
 
   @override
@@ -78,27 +98,14 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
       }).toList();
     }
 
-    // Filter by category tab
-    String categoryFilter = '';
-    switch (_tabController.index) {
-      case 0:
-        categoryFilter = 'friends';
-        break;
-      case 1:
-        categoryFilter = 'family';
-        break;
-      case 2:
-        categoryFilter = 'workplaces';
-        break;
-      case 3:
-        categoryFilter = 'community';
-        break;
-    }
-
-    if (categoryFilter.isNotEmpty) {
-      filtered = filtered
-          .where((group) => group["category"] == categoryFilter)
-          .toList();
+    // Filter by selected category chip
+    if (_selectedCategory != null && _selectedCategory != 'All') {
+      filtered = filtered.where((group) {
+        final groupCategory = (group["category"] ?? '')
+            .toString()
+            .toLowerCase();
+        return groupCategory == _selectedCategory!.toLowerCase();
+      }).toList();
     }
 
     // Apply additional filters
@@ -196,8 +203,9 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
                     children: [
                       Text(
                         'Advanced Filters',
-                        style: theme.textTheme.titleLarge
-                            ?.copyWith(fontWeight: FontWeight.w600),
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       TextButton(
                         onPressed: () {
@@ -306,7 +314,39 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
     );
   }
 
-  void _toggleFavorite(String groupId) {}
+  void _toggleSaved(String groupId) async {
+    try {
+      await UserService().toggleSavedEqub(groupId);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Saved updated')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update saved: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
+  void _toggleFavorite(String groupId) async {
+    try {
+      await UserService().toggleFavoriteEqub(groupId);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Favorite updated')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update favorite: ${e.toString()}')),
+        );
+      }
+    }
+  }
 
   void _showGroupDetails(Map<String, dynamic> group) {
     final theme = Theme.of(context);
@@ -356,8 +396,9 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
                     children: [
                       Text(
                         'Description',
-                        style: theme.textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w600),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       SizedBox(height: 1.h),
                       Text(
@@ -453,10 +494,7 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(
-            'Join Equb Group',
-            style: theme.textTheme.titleLarge,
-          ),
+          title: Text('Join Equb Group', style: theme.textTheme.titleLarge),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -520,7 +558,8 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
                 showDialog(
                   context: parentContext,
                   barrierDismissible: false,
-                  builder: (_) => const Center(child: CircularProgressIndicator()),
+                  builder: (_) =>
+                      const Center(child: CircularProgressIndicator()),
                 );
                 try {
                   await _equbService.requestToJoin(equbId: group['id']);
@@ -528,7 +567,9 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
                   ScaffoldMessenger.of(parentContext).showSnackBar(
                     SnackBar(
                       content: Text('Request sent to ${group["adminName"]}'),
-                      backgroundColor: AppTheme.getSuccessColorFromContext(parentContext),
+                      backgroundColor: AppTheme.getSuccessColorFromContext(
+                        parentContext,
+                      ),
                     ),
                   );
                 } catch (e) {
@@ -536,7 +577,9 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
                   ScaffoldMessenger.of(parentContext).showSnackBar(
                     SnackBar(
                       content: Text('Request not sent: ${e.toString()}'),
-                      backgroundColor: Theme.of(parentContext).colorScheme.error,
+                      backgroundColor: Theme.of(
+                        parentContext,
+                      ).colorScheme.error,
                     ),
                   );
                 }
@@ -552,7 +595,7 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -632,21 +675,60 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
             ),
           ),
 
-          // Category Tabs
+          // Category Filter Chips
           Container(
-            child: TabBar(
-              controller: _tabController,
-              onTap: (index) => setState(() {}),
-              tabs: [
-                CategoryTabWidget(title: 'Friends'),
-                CategoryTabWidget(title: 'Family'),
-                CategoryTabWidget(title: 'Workplaces'),
-                CategoryTabWidget(title: 'Community'),
-              ],
+            height: 5.h,
+            margin: EdgeInsets.symmetric(vertical: 1.h),
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.symmetric(horizontal: 4.w),
+              itemCount: categories.length,
+              itemBuilder: (context, index) {
+                final category = categories[index];
+                final isSelected = _selectedCategory == category;
+                return Container(
+                  margin: EdgeInsets.only(right: 2.w),
+                  child: FilterChip(
+                    label: Text(
+                      category == 'All'
+                          ? 'All'
+                          : category[0].toUpperCase() + category.substring(1),
+                      style: TextStyle(
+                        color: isSelected
+                            ? Colors.white
+                            : theme.colorScheme.onSurface,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                        fontSize: 12.sp,
+                      ),
+                    ),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      setState(() {
+                        _selectedCategory = selected ? category : 'All';
+                      });
+                    },
+                    backgroundColor: theme.colorScheme.surface,
+                    selectedColor: theme.colorScheme.primary,
+                    checkmarkColor: Colors.white,
+                    side: BorderSide(
+                      color: isSelected
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.outline.withOpacity(0.3),
+                      width: 1,
+                    ),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 3.w,
+                      vertical: 1.h,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
 
-          // Groups List
+          // Groups List - Show only regular groups
           Expanded(
             child: StreamBuilder(
               stream: _equbService.streamPublicEqubs(),
@@ -654,45 +736,65 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return EmptyBrowseState();
-                }
 
-                final docs = snapshot.data!.docs;
-                // Map Firestore docs to UI group maps
-                final List<Map<String, dynamic>> allGroups = docs.map((doc) {
-                  final data = doc.data();
-                  // Normalize category to one of new tabs so items appear
-                  final rawCategory = (data['category'] ?? '').toString().toLowerCase();
-                  final normalizedCategory =
-                      (rawCategory == 'friends' || rawCategory == 'family' || rawCategory == 'workplaces' || rawCategory == 'community')
-                          ? rawCategory
-                          : 'community';
-                  return {
-                    'id': doc.id,
-                    'name': data['name'] ?? 'Untitled Equb',
-                    'description': data['description'] ?? '',
-                    'contributionAmount': (data['contributionAmount'] is num)
-                        ? (data['contributionAmount'] as num).toStringAsFixed(2)
-                        : (data['contributionAmount']?.toString() ?? '0'),
-                    'duration': data['paymentFrequency'] ?? 'Monthly',
-                    'currentMembers': data['currentMembers'] ?? 0,
-                    'maxMembers': data['maxMembers'] ?? 0,
-                    'adminName': data['ownerEmail'] ?? 'Admin',
-                    'ownerUid': data['ownerUid'],
-                    'adminAvatar': data['ownerPhotoUrl'] ?? data['coverImageUrl'] ??
-                        'https://i.pravatar.cc/150?u=${data['ownerEmail'] ?? 'fallback'}',
-                    // Keep using "university" key for display/search, but show category label
-                    'university': (data['category'] ?? '-').toString(),
-                    'category': normalizedCategory,
-                    'nextCycleStart': (data['startDate'] != null)
-                        ? (data['startDate']).toDate().toString().split(' ').first
-                        : '-',
-                    'paymentFrequency': data['paymentFrequency'] ?? 'Monthly',
-                    'isBookmarked': false,
-                    'createdAtTs': (data['createdAt'] != null) ? data['createdAt'].toDate() : null,
-                  };
-                }).toList();
+                // Only regular groups
+                final List<Map<String, dynamic>> allGroups = [];
+
+                // Add regular groups (exclude system-generated groups)
+                if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+                  final docs = snapshot.data!.docs;
+                  for (final doc in docs) {
+                    final data = doc.data();
+                    // Filter out system-generated groups
+                    final isSystem = data['isSystemGenerated'] ?? false;
+                    final isMirchaye = data['isMirchayeGroup'] ?? false;
+                    final ownerUid = data['ownerUid'] ?? '';
+                    if (isSystem == true ||
+                        isMirchaye == true ||
+                        ownerUid == 'system') {
+                      continue; // Skip system groups
+                    }
+
+                    final rawCategory = (data['category'] ?? 'general')
+                        .toString()
+                        .toLowerCase();
+                    allGroups.add({
+                      'id': doc.id,
+                      'name': data['name'] ?? 'Untitled Equb',
+                      'description': data['description'] ?? '',
+                      'contributionAmount': (data['contributionAmount'] is num)
+                          ? (data['contributionAmount'] as num).toStringAsFixed(
+                              2,
+                            )
+                          : (data['contributionAmount']?.toString() ?? '0'),
+                      'duration': data['paymentFrequency'] ?? 'Monthly',
+                      'currentMembers': data['currentMembers'] ?? 0,
+                      'maxMembers': data['maxMembers'] ?? 0,
+                      'adminName': data['ownerEmail'] ?? 'Admin',
+                      'ownerUid': data['ownerUid'],
+                      'adminAvatar':
+                          data['ownerPhotoUrl'] ??
+                          data['coverImageUrl'] ??
+                          'https://i.pravatar.cc/150?u=${data['ownerEmail'] ?? 'fallback'}',
+                      'university': rawCategory,
+                      'category': rawCategory,
+                      'nextCycleStart': (data['startDate'] != null)
+                          ? (data['startDate'] as Timestamp)
+                                .toDate()
+                                .toString()
+                                .split(' ')
+                                .first
+                          : '-',
+                      'paymentFrequency': data['paymentFrequency'] ?? 'Monthly',
+                      'isBookmarked': false,
+                      'isFavorited': false,
+                      'isSystemGenerated': data['isSystemGenerated'] ?? false,
+                      'createdAtTs': (data['createdAt'] != null)
+                          ? (data['createdAt'] as Timestamp).toDate()
+                          : null,
+                    });
+                  }
+                }
 
                 // Client-side sort by createdAt desc if present
                 allGroups.sort((a, b) {
@@ -709,18 +811,21 @@ class _BrowseEqubGroupsState extends State<BrowseEqubGroups>
                 return RefreshIndicator(
                   onRefresh: _handleRefresh,
                   color: theme.colorScheme.primary,
-                  child: ListView.builder(
-                    padding: EdgeInsets.symmetric(vertical: 1.h),
-                    itemCount: filtered.length,
-                    itemBuilder: (context, index) {
-                      final group = filtered[index];
-                      return GroupCard(
-                        group: group,
-                        onTap: () => _showGroupDetails(group),
-                        onFavorite: () => _toggleFavorite(group['id']),
-                      );
-                    },
-                  ),
+                  child: filtered.isEmpty
+                      ? EmptyBrowseState()
+                      : ListView.builder(
+                          padding: EdgeInsets.symmetric(vertical: 1.h),
+                          itemCount: filtered.length,
+                          itemBuilder: (context, index) {
+                            final group = filtered[index];
+                            return GroupCard(
+                              group: group,
+                              onTap: () => _showGroupDetails(group),
+                              onSaved: () => _toggleSaved(group['id']),
+                              onFavorite: () => _toggleFavorite(group['id']),
+                            );
+                          },
+                        ),
                 );
               },
             ),

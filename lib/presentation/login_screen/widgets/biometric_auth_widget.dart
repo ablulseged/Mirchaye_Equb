@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../services/biometric_service.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
@@ -27,13 +28,20 @@ class _BiometricAuthWidgetState extends State<BiometricAuthWidget> {
     setState(() => _isAuthenticating = true);
 
     try {
-      // Simulate biometric authentication
-      await Future.delayed(const Duration(milliseconds: 1500));
+      final service = BiometricService();
+      final ok = await service.authenticate(reason: 'Authenticate to sign in');
 
-      // Provide haptic feedback
-      HapticFeedback.lightImpact();
-
-      widget.onBiometricLogin();
+      if (ok) {
+        // Provide haptic feedback
+        HapticFeedback.lightImpact();
+        widget.onBiometricLogin();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Biometric authentication failed. Please try again.'),
+          ),
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

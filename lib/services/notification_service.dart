@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'messaging_service.dart';
+import 'messaging_service.dart' show MessagingService, showLocalNotification;
 
 class NotificationService {
   NotificationService._internal();
@@ -75,6 +75,7 @@ class NotificationService {
     String? equbId,
     String? equbName,
     Map<String, dynamic>? data,
+    bool showHeadsUp = false, // Show heads-up notification immediately
   }) async {
     try {
       // Save notification to Firestore
@@ -87,7 +88,16 @@ class NotificationService {
         'isRead': false,
         'createdAt': FieldValue.serverTimestamp(),
         'data': data,
+        'showHeadsUp': showHeadsUp, // Store heads-up flag
       });
+
+      // Show heads-up notification if requested and user is the current user
+      if (showHeadsUp) {
+        final currentUserId = _auth.currentUser?.uid;
+        if (currentUserId == userId) {
+          await _showHeadsUpNotification(title, message, type, data ?? {});
+        }
+      }
 
       // Send push notification
       await _sendPushNotification(
@@ -115,10 +125,12 @@ class NotificationService {
     String? equbId,
     String? equbName,
     Map<String, dynamic>? data,
+    bool showHeadsUp = false, // Show heads-up notification immediately for current user
   }) async {
     try {
       final batch = _db.batch();
       final now = FieldValue.serverTimestamp();
+      final currentUserId = _auth.currentUser?.uid;
       
       // Save notifications to Firestore
       for (final userId in userIds) {
@@ -132,10 +144,16 @@ class NotificationService {
           'isRead': false,
           'createdAt': now,
           'data': data,
+          'showHeadsUp': showHeadsUp, // Store heads-up flag
         });
       }
       
       await batch.commit();
+
+      // Show heads-up notification if requested and current user is in the list
+      if (showHeadsUp && currentUserId != null && userIds.contains(currentUserId)) {
+        await _showHeadsUpNotification(title, message, type, data ?? {});
+      }
 
       // Send push notifications to all users
       await _sendPushNotificationsToUsers(
@@ -154,6 +172,27 @@ class NotificationService {
     }
   }
 
+  /// Show heads-up (overlay) notification immediately
+  Future<void> _showHeadsUpNotification(
+    String title,
+    String message,
+    String type,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      await showLocalNotification(
+        title,
+        message,
+        {
+          'type': type,
+          ...data,
+        },
+      );
+    } catch (e) {
+      print('Error showing heads-up notification: $e');
+    }
+  }
+
   /// Send push notification to a single user
   Future<void> _sendPushNotification({
     required String userId,
@@ -162,8 +201,6 @@ class NotificationService {
     Map<String, dynamic>? data,
   }) async {
     try {
-      final messagingService = MessagingService();
-      
       // Get user's FCM token from Firestore
       final userDoc = await _db.collection('users').doc(userId).get();
       final fcmToken = userDoc.data()?['fcmToken'] as String?;

@@ -20,14 +20,15 @@ class AuthService {
   // Load allowed emails from JSON file
   Future<void> loadAllowedEmails() async {
     try {
-      final String jsonString =
-          await rootBundle.loadString('assets/data/allowed_emails.json');
+      final String jsonString = await rootBundle.loadString(
+        'assets/data/allowed_emails.json',
+      );
       final Map<String, dynamic> jsonData = json.decode(jsonString);
       _allowedEmails = List<String>.from(jsonData['allowed_emails']);
-      
+
       // Convert all to lowercase for case-insensitive comparison
       _allowedEmails = _allowedEmails.map((e) => e.toLowerCase()).toList();
-      
+
       print('✅ Loaded ${_allowedEmails.length} allowed emails for signup');
     } catch (e) {
       print('❌ Error loading allowed emails: $e');
@@ -73,12 +74,13 @@ class AuthService {
 
       return {
         'success': true,
-        'message': 'Verification email sent! Please check your inbox and verify your email before logging in.',
+        'message':
+            'Verification email sent! Please check your inbox and verify your email before logging in.',
         'needsVerification': true,
       };
     } on FirebaseAuthException catch (e) {
       String message;
-      
+
       switch (e.code) {
         case 'email-already-in-use':
           message = 'This email is already registered.';
@@ -96,15 +98,9 @@ class AuthService {
           message = e.message ?? 'An error occurred during signup';
       }
 
-      return {
-        'success': false,
-        'message': message,
-      };
+      return {'success': false, 'message': message};
     } catch (e) {
-      return {
-        'success': false,
-        'message': 'Unexpected error: ${e.toString()}',
-      };
+      return {'success': false, 'message': 'Unexpected error: ${e.toString()}'};
     }
   }
 
@@ -137,13 +133,14 @@ class AuthService {
       };
     } on FirebaseAuthException catch (e) {
       String message = 'An error occurred during login';
-      
+
       switch (e.code) {
         case 'user-not-found':
           message = 'No account found with this email.';
           break;
         case 'wrong-password':
-          message = 'Incorrect password.';
+        case 'invalid-credential':
+          message = 'Incorrect password, please try again.';
           break;
         case 'invalid-email':
           message = 'The email address is not valid.';
@@ -158,10 +155,7 @@ class AuthService {
           message = e.message ?? message;
       }
 
-      return {
-        'success': false,
-        'message': message,
-      };
+      return {'success': false, 'message': message};
     } catch (e) {
       return {
         'success': false,
@@ -171,12 +165,10 @@ class AuthService {
   }
 
   // Send password reset email
-  Future<Map<String, dynamic>> resetPassword({
-    required String email,
-  }) async {
+  Future<Map<String, dynamic>> resetPassword({required String email}) async {
     try {
       await _auth.sendPasswordResetEmail(email: email.trim());
-      
+
       return {
         'success': true,
         'message':
@@ -184,7 +176,7 @@ class AuthService {
       };
     } on FirebaseAuthException catch (e) {
       String message = 'An error occurred';
-      
+
       switch (e.code) {
         case 'user-not-found':
           message = 'No account found with this email.';
@@ -196,10 +188,7 @@ class AuthService {
           message = e.message ?? message;
       }
 
-      return {
-        'success': false,
-        'message': message,
-      };
+      return {'success': false, 'message': message};
     } catch (e) {
       return {
         'success': false,
@@ -212,24 +201,18 @@ class AuthService {
   Future<Map<String, dynamic>> resendVerificationEmail() async {
     try {
       User? user = _auth.currentUser;
-      
+
       if (user == null) {
-        return {
-          'success': false,
-          'message': 'No user is currently signed in.',
-        };
+        return {'success': false, 'message': 'No user is currently signed in.'};
       }
 
       if (user.emailVerified) {
-        return {
-          'success': false,
-          'message': 'Email is already verified.',
-        };
+        return {'success': false, 'message': 'Email is already verified.'};
       }
 
       // Send verification with Firebase default handler
       await user.sendEmailVerification();
-      
+
       return {
         'success': true,
         'message': 'Verification email sent! Please check your inbox.',
@@ -262,5 +245,3 @@ class AuthService {
     return _auth.currentUser?.emailVerified ?? false;
   }
 }
-
-

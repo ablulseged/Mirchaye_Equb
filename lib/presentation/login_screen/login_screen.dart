@@ -4,6 +4,7 @@ import 'package:sizer/sizer.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../core/app_export.dart';
+import '../../services/biometric_service.dart';
 import '../../theme/app_theme.dart';
 import './widgets/app_logo_widget.dart';
 import './widgets/biometric_auth_widget.dart';
@@ -18,8 +19,10 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
-  bool _isBiometricAvailable = true; // Simulated biometric availability
+  bool _isBiometricAvailable = false;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  final _biometricService = BiometricService();
 
   @override
   void initState() {
@@ -28,10 +31,15 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _checkBiometricAvailability() {
-    // Simulate checking biometric availability
-    // In real implementation, use local_auth package
-    setState(() {
-      _isBiometricAvailable = true;
+    // Check device support and user preference
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final supported = await _biometricService.isBiometricAvailable();
+      final enabled = await _biometricService.getBiometricEnabled();
+      if (mounted) {
+        setState(() {
+          _isBiometricAvailable = supported && enabled;
+        });
+      }
     });
   }
 
@@ -46,13 +54,13 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       final user = userCredential.user;
-      
+
       if (user != null) {
         // Check if email is verified
         if (!user.emailVerified) {
           // Sign out and show message
           await _auth.signOut();
-          
+
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -62,7 +70,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 backgroundColor: Colors.orange,
                 behavior: SnackBarBehavior.floating,
                 duration: const Duration(seconds: 4),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
             );
           }
@@ -71,19 +81,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
         // Provide success haptic feedback
         HapticFeedback.lightImpact();
-
-        // Show success message
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Login successful! Welcome to Equb.'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 2),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-          );
-        }
 
         // AuthGate will handle navigation automatically
       }
@@ -94,7 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
           message = 'No account found with this email.';
           break;
         case 'wrong-password':
-          message = 'Incorrect password. Please try again.';
+          message = 'Incorrect password, please try again.';
           break;
         case 'invalid-email':
           message = 'Invalid email address.';
@@ -125,18 +122,64 @@ class _LoginScreenState extends State<LoginScreen> {
       // Provide success haptic feedback
       HapticFeedback.lightImpact();
 
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Biometric login successful! Welcome back.'),
-          backgroundColor: AppTheme.lightTheme.colorScheme.secondary,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      // Navigate to dashboard only if there's an active Firebase session
+      await Future.delayed(const Duration(milliseconds: 300));
 
-      // Navigate to dashboard (simulated)
-      await Future.delayed(const Duration(milliseconds: 500));
-      // Navigator.pushReplacementNamed(context, '/dashboard');
+      // If there's already a Firebase session, go ahead.
+      final user = _auth.currentUser;
+      if (user != null) {
+        Navigator.pushReplacementNamed(context, AppRoutes.dashboardHome);
+        return;
+      }
+
+      // Otherwise, try to retrieve locally stored credentials (kept only on device)
+      final creds = await _biometricService.getStoredCredentials();
+      if (creds != null) {
+        try {
+          final email = creds['email']!;
+          final password = creds['password']!;
+          final userCredential = await _auth.signInWithEmailAndPassword(
+            email: email.trim().toLowerCase(),
+            password: password.trim(),
+          );
+          if (userCredential.user != null) {
+            Navigator.pushReplacementNamed(context, AppRoutes.dashboardHome);
+            return;
+          }
+        } on FirebaseAuthException catch (e) {
+          // If stored credentials are invalid (password changed) or wrong password,
+          // clear them and show a concise message for wrong password.
+          await _biometricService.clearStoredCredentials();
+          if (mounted) {
+            if (e.code == 'wrong-password') {
+              _showErrorMessage('Incorrect password, please try again.');
+            } else {
+              _showErrorMessage(
+                'Stored credentials are no longer valid. Please sign in manually.',
+              );
+            }
+          }
+          return;
+        } catch (e) {
+          if (mounted)
+            _showErrorMessage(
+              'Automatic sign-in failed. Please sign in manually.',
+            );
+          return;
+        }
+      }
+
+      // No stored credentials available — ask the user to sign in with email/password.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'No active session found and no device credentials are stored. Please sign in with email and password.',
+            ),
+            backgroundColor: AppTheme.lightTheme.colorScheme.error,
+          ),
+        );
+      }
     } catch (e) {
       _showErrorMessage('Biometric authentication failed. Please try again.');
     }
@@ -168,76 +211,78 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                  SizedBox(height: 8.h),
+                SizedBox(height: 8.h),
 
-                  // App Logo Section
-                  const AppLogoWidget(),
+                // App Logo Section
+                const AppLogoWidget(),
 
-                  SizedBox(height: 6.h),
+                SizedBox(height: 6.h),
 
-                  // Welcome Text
-                  Text(
-                    'Welcome Back!',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface,
-                      fontWeight: FontWeight.w600,
+                // Welcome Text
+                Text(
+                  'Welcome Back!',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+
+                SizedBox(height: 1.h),
+
+                Text(
+                  'Sign in to continue to your Equb account',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+
+                SizedBox(height: 4.h),
+
+                // Login Form
+                LoginFormWidget(onLogin: _handleLogin, isLoading: _isLoading),
+
+                // Biometric Authentication
+                BiometricAuthWidget(
+                  onBiometricLogin: _handleBiometricLogin,
+                  isAvailable: _isBiometricAvailable,
+                ),
+
+                SizedBox(height: 6.h),
+
+                // Sign Up Link
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'New to Equb? ',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-
-                  SizedBox(height: 1.h),
-
-                  Text(
-                    'Sign in to continue to your Equb account',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-
-                  SizedBox(height: 4.h),
-
-                  // Login Form
-                  LoginFormWidget(onLogin: _handleLogin, isLoading: _isLoading),
-
-                  // Biometric Authentication
-                  BiometricAuthWidget(
-                    onBiometricLogin: _handleBiometricLogin,
-                    isAvailable: _isBiometricAvailable,
-                  ),
-
-                  SizedBox(height: 6.h),
-
-                  // Sign Up Link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'New to Equb? ',
+                    GestureDetector(
+                      onTap: _navigateToSignup,
+                      child: Text(
+                        'Sign Up',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                          decorationColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
                         ),
                       ),
-                      GestureDetector(
-                        onTap: _navigateToSignup,
-                        child: Text(
-                          'Sign Up',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.w600,
-                            decoration: TextDecoration.underline,
-                            decorationColor: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  
-                  SizedBox(height: 4.h),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+
+                SizedBox(height: 4.h),
+              ],
             ),
           ),
         ),
+      ),
     );
   }
 }
