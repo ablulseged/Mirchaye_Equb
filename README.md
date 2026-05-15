@@ -1,3 +1,15 @@
+<img width="606" height="1280" alt="photo_2026-05-16_00-20-27" src="https://github.com/user-attachments/assets/f2ec0d56-15c8-45bd-bfa9-c95a705a4585" />
+<img width="606" height="1280" alt="photo_2026-05-16_00-20-40" src="https://github.com/user-attachments/assets/1a91d3f6-ae0d-46e5-81ee-02ca9fc7b1d2" />
+<img width="606" height="1280" alt="photo_2026-05-16_00-20-47" src="https://github.com/user-attachments/assets/89662d3b-0dea-40a3-af5c-43c8cff5cf9c" />
+<img width="606" height="1280" alt="photo_2026-05-16_00-20-51" src="https://github.com/user-attachments/assets/bc6a638b-f1b0-497c-b776-fc0ab3b47f76" />
+<img width="606" height="1280" alt="photo_2026-05-16_00-20-56" src="https://github.com/user-attachments/assets/1004642f-8929-4182-9892-8bb74314e722" />
+<img width="606" height="1280" alt="photo_2026-05-16_00-21-07" src="https://github.com/user-attachments/assets/a83a700f-0483-41f7-8d48-5817f9b2c869" />
+<img width="606" height="1280" alt="photo_2026-05-16_00-21-11" src="https://github.com/user-attachments/assets/0e407fea-0c64-4bdf-beee-e736f3891720" />
+<img width="606" height="1280" alt="photo_2026-05-16_00-22-06" src="https://github.com/user-attachments/assets/75d093d9-0d9f-46ae-aac5-77aaca53e1e1" />
+<img width="606" height="1280" alt="photo_2026-05-16_00-22-19" src="https://github.com/user-attachments/assets/eb1a939e-df3c-42d8-9381-e177ce72a618" />
+
+
+
 # Mirchaye Equb
 
 A Flutter mobile application for managing Equb groups - traditional rotating savings and credit associations.
